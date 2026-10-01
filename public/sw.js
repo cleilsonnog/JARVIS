@@ -1,5 +1,5 @@
 // Service Worker - JARVIS PWA
-const CACHE_NAME = "jarvis-v5";
+const CACHE_NAME = "jarvis-v6";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -16,7 +16,7 @@ const STATIC_ASSETS = [
   "/js/camera.js",
   "/js/widget-page.js",
   "/widget.html",
-  "/tailwind.config.js",
+  "/tailwind.css",
   "/js/theme.js",
   "/js/reminders.js",
   "/manifest.json",

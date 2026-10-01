@@ -1,5 +1,7 @@
-// Tailwind CDN config, shared by index.html and widget.html
-tailwind.config = {
+// Tailwind v3 build config (npm run build:css -> public/tailwind.css)
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./public/**/*.{html,js}"],
   darkMode: 'class',
   theme: {
     extend: {
