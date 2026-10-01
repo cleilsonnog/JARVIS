@@ -11,6 +11,7 @@ jarvis.db-*
 
 # Local tooling
 .claude/
+.serena/
 
 # Build output (npm run build:css)
 public/tailwind.css
