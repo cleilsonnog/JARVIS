@@ -48,7 +48,7 @@ if [ ! -d node_modules ] || ! git diff --quiet "$PREV" "$NEW" -- package.json pa
   npm ci --no-audit --no-fund
 fi
 
-npm run -s build:css
+BROWSERSLIST_IGNORE_OLD_DATA=1 npm run -s build:css
 pm2 restart jarvis --update-env > /dev/null
 
 # Health check: the login page must answer within ~10s

@@ -45,6 +45,7 @@ EOF
 ## 4. Iniciar com PM2
 
 ```bash
+npm run build:css
 pm2 start server.js --name jarvis
 pm2 save
 pm2 startup  # Seguir instrucoes para auto-start no boot
@@ -109,22 +110,30 @@ O SSL e necessario para:
 
 ## Atualizar (deploy de novas versoes)
 
-Do PC local, envia so o codigo (nao mexe em `.env`, banco nem `node_modules`):
+O codigo vai pelo GitHub: a VPS faz `git pull` do que voce enviou.
 
 ```bash
-cd ~/Documentos/JARVIS
-# Backup na VPS antes
-ssh root@SEU_IP 'tar czf /root/jarvis-backup-$(date +%Y%m%d-%H%M).tgz --exclude=node_modules -C /root JARVIS'
-# Envio
-rsync -rc --itemize-changes --exclude=.env --exclude='jarvis.db*' --exclude=node_modules \
-  --exclude=server.log --exclude=.claude --exclude=package-lock.json --exclude=.gitignore \
-  ./ root@SEU_IP:/root/JARVIS/
-# Se o package.json mudou: ssh root@SEU_IP 'cd /root/JARVIS && npm install --production'
-ssh root@SEU_IP 'pm2 restart jarvis'
+git add ... && git commit -m "..."
+git push
+./scripts/deploy.sh
 ```
 
-Obs.: as sessoes de login ficam em memoria, entao cada restart pede login de novo.
-No celular, recarregue a pagina para o service worker pegar a versao nova.
+O script recusa se houver mudancas nao commitadas ou sem push. Na VPS ele faz pull,
+`npm ci` (so se as dependencias mudaram), compila o CSS, reinicia e testa se o site respondeu.
+Se falhar, mostra o comando para voltar a versao anterior.
+
+### Como a VPS esta organizada
+
+| Item | Onde |
+|------|------|
+| App | `/home/jarvis/JARVIS` (usuario `jarvis`, **sem root/sudo**) |
+| Segredos e dados | `.env` e `jarvis.db` nessa pasta (fora do git) |
+| Arquivos acessiveis pelo JARVIS | `/home/jarvis/jarvis-files` (`TOOLS_MODE=safe`) |
+| Processo | PM2 do usuario `jarvis`, servico `pm2-jarvis` (sobe no boot) |
+| Acesso ao GitHub | deploy key somente leitura em `~jarvis/.ssh/github_deploy` |
+| Nginx | `/etc/nginx/sites-available/jarvis` (precisa de `X-Forwarded-Proto` e `proxy_buffering off`) |
+
+Comandos PM2 rodam como o usuario jarvis: `ssh jarvis@SEU_IP 'pm2 logs jarvis'`.
 
 ## Comandos uteis PM2
 

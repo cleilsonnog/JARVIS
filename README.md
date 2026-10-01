@@ -161,10 +161,12 @@ JARVIS/
 │   ├── database.js          # SQLite: tabelas + prepared statements + memories
 │   ├── tools.js             # Ferramentas do sistema + memória persistente
 │   └── routes.js            # Rotas da API + Gemini + system stats
+├── scripts/deploy.sh        # Deploy na VPS via git (pull + build + restart + health check)
+├── styles/tailwind.css      # Entrada do Tailwind (gera public/tailwind.css)
+├── tailwind.config.js       # Config do Tailwind (cores, animações)
 ├── public/
 │   ├── index.html           # Interface principal (Tailwind + background HUD)
 │   ├── widget.html          # Card do dashboard destacado em janela própria
-│   ├── tailwind.config.js   # Config do Tailwind (compartilhada pelas páginas)
 │   ├── login.html           # Tela de login
 │   ├── app.js               # Entry point frontend + submit + slash commands
 │   ├── style.css            # Estilos: markdown, animações, background, mobile
