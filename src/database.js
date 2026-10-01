@@ -1,7 +1,8 @@
 const Database = require("better-sqlite3");
 const path = require("path");
 
-const db = new Database(path.join(__dirname, "..", "jarvis.db"));
+// JARVIS_DB lets tests (or a second instance) use a separate database file
+const db = new Database(process.env.JARVIS_DB || path.join(__dirname, "..", "jarvis.db"));
 db.pragma("journal_mode = WAL");
 
 db.exec(`
@@ -31,6 +32,16 @@ db.exec(`
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint TEXT PRIMARY KEY,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     key TEXT NOT NULL UNIQUE,
@@ -39,6 +50,11 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+// Migrations for existing databases
+const reminderCols = db.prepare("PRAGMA table_info(reminders)").all().map((c) => c.name);
+// notified = alert already sent; done = user confirmed it ("Concluir")
+if (!reminderCols.includes("done")) db.exec("ALTER TABLE reminders ADD COLUMN done INTEGER DEFAULT 0");
 
 const stmts = {
   createConversation: db.prepare("INSERT INTO conversations (id, title) VALUES (?, ?)"),
@@ -53,7 +69,19 @@ const stmts = {
   markNotified: db.prepare("UPDATE reminders SET notified = 1 WHERE id = ?"),
   getReminders: db.prepare("SELECT id, text, remind_at, notified FROM reminders WHERE notified = 0 ORDER BY remind_at ASC"),
   deleteReminder: db.prepare("DELETE FROM reminders WHERE id = ?"),
-  getTodayReminders: db.prepare("SELECT id, text, remind_at, notified FROM reminders WHERE date(remind_at) = date('now', 'localtime') ORDER BY remind_at ASC"),
+  getTodayReminders: db.prepare("SELECT id, text, remind_at, notified, done FROM reminders WHERE date(remind_at) = date('now', 'localtime') ORDER BY remind_at ASC"),
+  // Alerted but not confirmed yet (shown as cards until "Concluir" / "Adiar")
+  getActiveReminders: db.prepare("SELECT id, text, remind_at FROM reminders WHERE notified = 1 AND done = 0 ORDER BY remind_at ASC"),
+  getReminder: db.prepare("SELECT id, text, remind_at, notified, done FROM reminders WHERE id = ?"),
+  markDone: db.prepare("UPDATE reminders SET done = 1 WHERE id = ?"),
+  // ? = SQLite modifier like "+10 minutes"; keeps remind_at in the same local "YYYY-MM-DD HH:MM" format
+  snoozeReminder: db.prepare("UPDATE reminders SET remind_at = strftime('%Y-%m-%d %H:%M', 'now', 'localtime', ?), notified = 0, done = 0 WHERE id = ?"),
+  // Push
+  savePushSub: db.prepare("INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth"),
+  getPushSubs: db.prepare("SELECT endpoint, p256dh, auth FROM push_subscriptions"),
+  deletePushSub: db.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?"),
+  getSetting: db.prepare("SELECT value FROM settings WHERE key = ?"),
+  setSetting: db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"),
   // Sessions (token stored as SHA-256 hash; times in ms)
   addSession: db.prepare("INSERT INTO sessions (token_hash, created_at, expires_at) VALUES (?, ?, ?)"),
   getSession: db.prepare("SELECT expires_at FROM sessions WHERE token_hash = ?"),

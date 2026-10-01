@@ -1,5 +1,5 @@
 // Service Worker - JARVIS PWA
-const CACHE_NAME = "jarvis-v7";
+const CACHE_NAME = "jarvis-v8";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -20,6 +20,8 @@ const STATIC_ASSETS = [
   "/js/theme.js",
   "/js/reminders.js",
   "/manifest.json",
+  "/icons/icon-192.png",
+  "/icons/badge-96.png",
 ];
 
 self.addEventListener("install", (e) => {
@@ -66,4 +68,60 @@ self.addEventListener("fetch", (e) => {
         .catch(() => caches.match(e.request))
     );
   }
+});
+
+// ===== Push notifications (reminders) =====
+self.addEventListener("push", (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch { data = { text: e.data?.text() }; }
+
+  const isReminder = data.type === "reminder";
+  const title = isReminder ? "JARVIS · Lembrete" : "JARVIS";
+  const options = {
+    body: data.text || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/badge-96.png",
+    tag: isReminder ? `reminder-${data.id}` : "jarvis",
+    renotify: true,
+    requireInteraction: isReminder, // stays until the user acts on it
+    vibrate: [200, 100, 200, 100, 400],
+    data,
+    actions: isReminder
+      ? [{ action: "done", title: "Concluir" }, { action: "snooze", title: "Adiar 10 min" }]
+      : [],
+  };
+
+  e.waitUntil((async () => {
+    await self.registration.showNotification(title, options);
+    // Open JARVIS tabs show the card and speak right away instead of waiting for their poll
+    const tabs = await self.clients.matchAll({ type: "window" });
+    tabs.forEach((c) => c.postMessage({ type: "jarvis-push", data }));
+  })());
+});
+
+self.addEventListener("notificationclick", (e) => {
+  const { data } = e.notification;
+  e.notification.close();
+
+  e.waitUntil((async () => {
+    if (data?.type === "reminder" && (e.action === "done" || e.action === "snooze")) {
+      const url = `/api/reminders/${data.id}/${e.action}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ minutes: 10 }),
+      }).catch(() => null);
+      if (res?.ok) {
+        const tabs = await self.clients.matchAll({ type: "window" });
+        tabs.forEach((c) => c.postMessage({ type: "jarvis-reminder-updated", id: data.id }));
+        return;
+      }
+      // Not logged in / offline: fall through and open the app so the user can act there
+    }
+
+    const tabs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const tab = tabs.find((c) => new URL(c.url).origin === self.location.origin);
+    if (tab) return tab.focus();
+    return self.clients.openWindow("/");
+  })());
 });

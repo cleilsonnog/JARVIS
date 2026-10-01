@@ -6,6 +6,7 @@ const { execSync } = require("child_process");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { db, stmts } = require("./database");
 const { functionDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT } = require("./tools");
+const push = require("./push");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -68,6 +69,8 @@ function getSystemPrompt() {
 }
 
 function register(app) {
+  push.startReminderScheduler();
+
   // Conversas
   app.get("/api/conversations", (req, res) => {
     res.json(stmts.getConversations.all());
@@ -84,10 +87,49 @@ function register(app) {
   });
 
   // Lembretes pendentes (polling do frontend)
+  // Reminders already alerted (by the scheduler) and not yet confirmed. Read-only:
+  // the page shows them as cards; it no longer decides what is "notified".
   app.get("/api/reminders/pending", (req, res) => {
-    const pending = stmts.getPendingReminders.all();
-    pending.forEach((r) => stmts.markNotified.run(r.id));
-    res.json(pending);
+    res.json(stmts.getActiveReminders.all());
+  });
+
+  app.post("/api/reminders/:id/done", (req, res) => {
+    const r = stmts.getReminder.get(req.params.id);
+    if (!r) return res.status(404).json({ error: "Lembrete não encontrado" });
+    stmts.markDone.run(r.id);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/reminders/:id/snooze", (req, res) => {
+    const r = stmts.getReminder.get(req.params.id);
+    if (!r) return res.status(404).json({ error: "Lembrete não encontrado" });
+    const minutes = Math.min(24 * 60, Math.max(1, parseInt(req.body?.minutes, 10) || 10));
+    stmts.snoozeReminder.run(`+${minutes} minutes`, r.id);
+    res.json({ ok: true, reminder: stmts.getReminder.get(r.id) });
+  });
+
+  // Web Push
+  app.get("/api/push/public-key", (req, res) => {
+    res.json({ publicKey: push.getPublicKey() });
+  });
+
+  app.post("/api/push/subscribe", (req, res) => {
+    try {
+      push.saveSubscription(req.body);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", (req, res) => {
+    if (req.body?.endpoint) push.removeSubscription(req.body.endpoint);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/push/test", async (req, res) => {
+    const result = await push.sendToAll({ type: "test", text: "Notificações funcionando. Vou te avisar dos lembretes aqui." });
+    res.json(result);
   });
 
   // Lembretes do dia (para dashboard)

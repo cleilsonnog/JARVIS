@@ -206,8 +206,9 @@ async function cmdLembretes() {
     } else {
       const lines = reminders.map((r) => {
         const time = r.remind_at.split(" ")[1] || r.remind_at;
-        const status = r.notified ? "~~" : "**";
-        return `- ${status}${time}${status} — ${r.text}`;
+        if (r.done) return `- ~~${time} — ${r.text}~~ (concluído)`;
+        if (r.notified) return `- **${time}** — ${r.text} _(avisado, aguardando você)_`;
+        return `- **${time}** — ${r.text}`;
       }).join("\n");
       createMessageEl("assistant", `**Lembretes de hoje:**\n\n${lines}`);
       speak(`Você tem ${reminders.length} lembrete${reminders.length > 1 ? "s" : ""} para hoje.`);

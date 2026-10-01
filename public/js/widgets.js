@@ -225,11 +225,17 @@ async function loadTodayReminders() {
 
     list.innerHTML = reminders.map((r) => {
       const time = r.remind_at.split(" ")[1]?.slice(0, 5) || "";
-      const done = r.notified;
-      return `<div class="flex items-center gap-3 px-3 py-2 border-l-2 ${done ? "border-white/10 opacity-50" : "border-jarvis-500 bg-jarvis-500/5"} text-xs">
+      // pending -> alerted (waiting for "Concluir") -> done
+      const state = r.done ? "done" : r.notified ? "alerted" : "pending";
+      const style = {
+        done: { row: "border-white/10 opacity-50", text: "line-through", badge: "text-gray-600", label: "concluído" },
+        alerted: { row: "border-amber-400 bg-amber-400/5", text: "", badge: "text-amber-400", label: "avisado" },
+        pending: { row: "border-jarvis-500 bg-jarvis-500/5", text: "", badge: "text-emerald-400", label: "pendente" },
+      }[state];
+      return `<div class="flex items-center gap-3 px-3 py-2 border-l-2 ${style.row} text-xs">
         <span class="text-jarvis-400 font-mono">${escapeHtml(time)}</span>
-        <span class="text-gray-300 flex-1 truncate ${done ? "line-through" : ""}">${escapeHtml(r.text)}</span>
-        <span class="text-[10px] font-mono uppercase ${done ? "text-gray-600" : "text-emerald-400"}">${done ? "feito" : "pendente"}</span>
+        <span class="text-gray-300 flex-1 truncate ${style.text}">${escapeHtml(r.text)}</span>
+        <span class="text-[10px] font-mono uppercase ${style.badge}">${style.label}</span>
       </div>`;
     }).join("");
   } catch {}
@@ -246,4 +252,6 @@ export function startWidgetTimers() {
   setInterval(updateClock, 1000);
   setInterval(loadStats, 5000);
   setInterval(loadTodayReminders, 60000);
+  // Refresh right away when a reminder is alerted, confirmed or snoozed (reminders.js)
+  window.addEventListener("jarvis:reminders-changed", loadTodayReminders);
 }
