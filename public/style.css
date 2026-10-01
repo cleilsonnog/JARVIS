@@ -492,6 +492,20 @@
   text-align: right;
 }
 
+/* ===== Reminder agenda ===== */
+.agenda-row { transition: opacity 0.25s; }
+/* Row actions appear on hover with a mouse; always visible on touch screens */
+@media (hover: hover) {
+  .agenda-row .agenda-actions { opacity: 0; transition: opacity 0.15s; }
+  .agenda-row:hover .agenda-actions { opacity: 1; }
+}
+/* Dashboard card: scroll inside unless the user resized the card (then the card scrolls) */
+.hud-card:not([style*="height"]) #dash-reminders-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 /* ===== Camera panel (vision) ===== */
 .cam-panel {
   position: fixed;

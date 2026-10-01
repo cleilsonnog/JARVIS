@@ -93,6 +93,17 @@ function register(app) {
     res.json(stmts.getActiveReminders.all());
   });
 
+  app.get("/api/reminders/upcoming", (req, res) => {
+    res.json(stmts.getUpcomingReminders.all());
+  });
+
+  app.delete("/api/reminders/:id", (req, res) => {
+    const r = stmts.getReminder.get(req.params.id);
+    if (!r) return res.status(404).json({ error: "Lembrete não encontrado" });
+    stmts.deleteReminder.run(r.id);
+    res.json({ ok: true });
+  });
+
   app.post("/api/reminders/:id/done", (req, res) => {
     const r = stmts.getReminder.get(req.params.id);
     if (!r) return res.status(404).json({ error: "Lembrete não encontrado" });

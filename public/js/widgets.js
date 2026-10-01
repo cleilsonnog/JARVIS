@@ -1,5 +1,6 @@
 // ===== Dashboard widgets: markup + live data =====
 // Shared by the main dashboard (dashboard.js) and pop-out windows (widget-page.js).
+import { fetchAgenda, renderAgenda } from "./agenda.js";
 
 export const DEFAULT_ORDER = ["clock", "reminders", "cpu", "ram", "disk", "actions", "system"];
 
@@ -96,8 +97,8 @@ export const WIDGETS = {
       <span id="dash-tz"></span><span id="dash-uptime-clock"></span>
     </div>`) },
 
-  reminders: { title: "Lembretes", w: 7, md: 6, render: () => card("reminders", "R-01", "Lembretes de hoje", "bell", `
-    <div id="dash-reminders-list" class="space-y-1.5"></div>`) },
+  reminders: { title: "Lembretes", w: 7, md: 6, render: () => card("reminders", "R-01", "Lembretes", "bell", `
+    <div id="dash-reminders-list" class="agenda space-y-3"></div>`) },
 
   cpu: { title: "Processador", w: 4, md: 6, render: () => card("cpu", "SYS.01", "Processador", "cpu", gaugeBody("cpu", true)) },
   ram: { title: "Memória", w: 4, md: 6, render: () => card("ram", "SYS.02", "Memória", "ram", gaugeBody("ram", true)) },
@@ -149,10 +150,6 @@ function formatBytes(bytes) {
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 function setText(id, text) {
@@ -211,33 +208,7 @@ async function loadTodayReminders() {
   const list = document.getElementById("dash-reminders-list");
   if (!list) return;
   try {
-    const res = await fetch("/api/reminders/today");
-    const reminders = await res.json();
-
-    if (reminders.length === 0) {
-      list.innerHTML = `
-        <div class="py-6 text-center">
-          <p class="text-sm text-gray-500">Nenhum lembrete para hoje</p>
-          <button type="button" class="dash-prompt mt-2 text-[11px] font-mono text-jarvis-400 hover:underline" data-prompt="/lembrete " data-fill>/lembrete HH:MM texto</button>
-        </div>`;
-      return;
-    }
-
-    list.innerHTML = reminders.map((r) => {
-      const time = r.remind_at.split(" ")[1]?.slice(0, 5) || "";
-      // pending -> alerted (waiting for "Concluir") -> done
-      const state = r.done ? "done" : r.notified ? "alerted" : "pending";
-      const style = {
-        done: { row: "border-white/10 opacity-50", text: "line-through", badge: "text-gray-600", label: "concluído" },
-        alerted: { row: "border-amber-400 bg-amber-400/5", text: "", badge: "text-amber-400", label: "avisado" },
-        pending: { row: "border-jarvis-500 bg-jarvis-500/5", text: "", badge: "text-emerald-400", label: "pendente" },
-      }[state];
-      return `<div class="flex items-center gap-3 px-3 py-2 border-l-2 ${style.row} text-xs">
-        <span class="text-jarvis-400 font-mono">${escapeHtml(time)}</span>
-        <span class="text-gray-300 flex-1 truncate ${style.text}">${escapeHtml(r.text)}</span>
-        <span class="text-[10px] font-mono uppercase ${style.badge}">${style.label}</span>
-      </div>`;
-    }).join("");
+    renderAgenda(list, await fetchAgenda());
   } catch {}
 }
 

@@ -3,6 +3,7 @@
 // Here we (1) subscribe this device to push, (2) show cards for alerted reminders that weren't
 // confirmed yet, with "Concluir" / "Adiar", and (3) speak each one once.
 import { speak } from "./tts.js";
+import { fetchAgenda, renderAgenda, attentionCount } from "./agenda.js";
 
 const container = document.getElementById("reminder-cards");
 const POLL_MS = 30000;
@@ -189,6 +190,59 @@ async function initPush() {
     if (!dismissed) showPushPrompt();
   }
 }
+
+// ----- Header bell: badge + agenda panel -----
+const agendaBtn = document.getElementById("agenda-btn");
+const agendaPanel = document.getElementById("agenda-panel");
+const agendaList = document.getElementById("agenda-panel-list");
+const agendaBadge = document.getElementById("agenda-badge");
+
+async function refreshAgenda() {
+  try {
+    const reminders = await fetchAgenda();
+    // Badge only for what needs attention (overdue / today); future ones don't nag
+    const n = attentionCount(reminders);
+    agendaBadge.textContent = n > 9 ? "9+" : String(n);
+    agendaBadge.classList.toggle("hidden", n === 0);
+    if (!agendaPanel.classList.contains("hidden")) renderAgenda(agendaList, reminders);
+    return reminders;
+  } catch {}
+}
+
+agendaBtn.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  const opening = agendaPanel.classList.contains("hidden");
+  agendaPanel.classList.toggle("hidden");
+  if (opening) {
+    agendaList.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Carregando...</p>`;
+    const reminders = await refreshAgenda();
+    if (reminders) renderAgenda(agendaList, reminders);
+  }
+});
+
+// Close on outside click / Escape
+document.addEventListener("click", (e) => {
+  if (!agendaPanel.classList.contains("hidden") && !e.target.closest("#agenda-panel")) agendaPanel.classList.add("hidden");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") agendaPanel.classList.add("hidden");
+});
+
+// Empty-state shortcut inside the panel: prefill the reminder command
+agendaPanel.addEventListener("click", (e) => {
+  const prompt = e.target.closest(".dash-prompt");
+  if (!prompt) return;
+  const input = document.getElementById("input");
+  input.value = prompt.dataset.prompt;
+  input.focus();
+  agendaPanel.classList.add("hidden");
+});
+
+window.addEventListener("jarvis:reminders-changed", refreshAgenda);
+// A chat reply may have created a reminder ("JARVIS, me lembra amanhã às 9h...")
+window.addEventListener("jarvis:reply-done", () => window.dispatchEvent(new Event("jarvis:reminders-changed")));
+setInterval(refreshAgenda, 60000);
+refreshAgenda();
 
 // ----- Wiring -----
 navigator.serviceWorker?.addEventListener("message", (e) => {

@@ -72,6 +72,8 @@ const stmts = {
   getTodayReminders: db.prepare("SELECT id, text, remind_at, notified, done FROM reminders WHERE date(remind_at) = date('now', 'localtime') ORDER BY remind_at ASC"),
   // Alerted but not confirmed yet (shown as cards until "Concluir" / "Adiar")
   getActiveReminders: db.prepare("SELECT id, text, remind_at FROM reminders WHERE notified = 1 AND done = 0 ORDER BY remind_at ASC"),
+  // Agenda: everything not confirmed yet (overdue, today and future), soonest first
+  getUpcomingReminders: db.prepare("SELECT id, text, remind_at, notified, done FROM reminders WHERE done = 0 ORDER BY remind_at ASC LIMIT 100"),
   getReminder: db.prepare("SELECT id, text, remind_at, notified, done FROM reminders WHERE id = ?"),
   markDone: db.prepare("UPDATE reminders SET done = 1 WHERE id = ?"),
   // ? = SQLite modifier like "+10 minutes"; keeps remind_at in the same local "YYYY-MM-DD HH:MM" format
