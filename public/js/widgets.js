@@ -1,8 +1,10 @@
 // ===== Dashboard widgets: markup + live data =====
 // Shared by the main dashboard (dashboard.js) and pop-out windows (widget-page.js).
 import { fetchAgenda, renderAgenda } from "./agenda.js";
+import { coreSlot, mountCore } from "./core.js";
 
-export const DEFAULT_ORDER = ["clock", "reminders", "cpu", "ram", "disk", "actions", "system"];
+// Large screens: core in the middle spanning two rows, cards around it
+export const DEFAULT_ORDER = ["clock", "core", "reminders", "cpu", "ram", "disk", "system", "actions"];
 
 const HISTORY_SIZE = 30;
 const GAUGE_C = 2 * Math.PI * 34; // gauge circumference (r=34)
@@ -26,9 +28,9 @@ function icon(name, size = 14) {
 }
 
 function card(id, code, title, iconName, body) {
-  const { md } = WIDGETS[id];
+  const { md, rows = 1 } = WIDGETS[id];
   return `
-    <section class="hud-card col-span-12 ${md === 12 ? "" : "md:col-span-6"}" data-widget="${id}">
+    <section class="hud-card col-span-12 ${md === 12 ? "" : "md:col-span-6"}" data-widget="${id}" data-rows="${rows}">
       <span class="hud-corner tl"></span><span class="hud-corner tr"></span>
       <span class="hud-corner bl"></span><span class="hud-corner br"></span>
       <header class="hud-handle" title="Arraste para reorganizar">
@@ -84,9 +86,13 @@ const PROMPTS = [
 ];
 const QUICK_COMMANDS = ["/camera", "/sistema", "/monitor", "/clima", "/lembretes", "/ip", "/memorias"];
 
-// w: default width in grid columns (of 12) on large screens; md: width on tablets
+// w: default width in grid columns (of 12) on large screens; md: width on tablets;
+// rows: grid rows spanned on large screens; mount: optional setup after the card is in the DOM
 export const WIDGETS = {
-  clock: { title: "Tempo", w: 5, md: 6, render: () => card("clock", "T-00", "Tempo", "clock", `
+  // Frameless slot; the reactor is drawn behind the grid, centered on it (core.js)
+  core: { title: "Núcleo", w: 4, md: 12, rows: 2, render: () => coreSlot("col-span-12"), mount: mountCore },
+
+  clock: { title: "Tempo", w: 4, md: 6, render: () => card("clock", "T-00", "Tempo", "clock", `
     <div class="flex items-baseline gap-2 font-mono">
       <span id="dash-clock" class="text-5xl font-light text-gray-100 tracking-wider">--:--</span>
       <span id="dash-seconds" class="text-xl text-jarvis-400">--</span>
@@ -97,15 +103,15 @@ export const WIDGETS = {
       <span id="dash-tz"></span><span id="dash-uptime-clock"></span>
     </div>`) },
 
-  reminders: { title: "Lembretes", w: 7, md: 6, render: () => card("reminders", "R-01", "Lembretes", "bell", `
+  reminders: { title: "Lembretes", w: 4, md: 6, render: () => card("reminders", "R-01", "Lembretes", "bell", `
     <div id="dash-reminders-list" class="agenda space-y-3"></div>`) },
 
   cpu: { title: "Processador", w: 4, md: 6, render: () => card("cpu", "SYS.01", "Processador", "cpu", gaugeBody("cpu", true)) },
   ram: { title: "Memória", w: 4, md: 6, render: () => card("ram", "SYS.02", "Memória", "ram", gaugeBody("ram", true)) },
   disk: { title: "Armazenamento", w: 4, md: 6, render: () => card("disk", "SYS.03", "Armazenamento", "disk", gaugeBody("disk", false)) },
 
-  actions: { title: "Ações rápidas", w: 8, md: 12, render: () => card("actions", "CMD", "Ações rápidas", "bolt", `
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+  actions: { title: "Ações rápidas", w: 4, md: 12, render: () => card("actions", "CMD", "Ações rápidas", "bolt", `
+    <div class="grid grid-cols-2 gap-2">
       ${PROMPTS.map((p) => `
         <button type="button" class="dash-prompt group text-left p-3 border border-white/5 bg-white/[0.02] hover:border-jarvis-500/40 hover:bg-jarvis-500/5 transition-colors" data-prompt="${p.text}">
           <p class="text-[10px] uppercase tracking-wider text-gray-500 group-hover:text-jarvis-400 transition-colors">${p.tag}</p>
@@ -225,4 +231,9 @@ export function startWidgetTimers() {
   setInterval(loadTodayReminders, 60000);
   // Refresh right away when a reminder is alerted, confirmed or snoozed (reminders.js)
   window.addEventListener("jarvis:reminders-changed", loadTodayReminders);
+}
+
+// Run per-widget setup (e.g. the core's canvas) for cards rendered inside `root`
+export function mountWidgets(root) {
+  root.querySelectorAll("[data-widget]").forEach((card) => WIDGETS[card.dataset.widget]?.mount?.(card));
 }

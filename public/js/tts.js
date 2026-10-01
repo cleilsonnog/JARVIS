@@ -68,11 +68,18 @@ const MAX_CHUNK = 180;
 
 export function isSpeaking() { return speaking; }
 
+// Exposed on <body> so visuals (core.js) can react without importing this module
+function setSpeaking(on) {
+  speaking = on;
+  if (on) document.body.dataset.speaking = "1";
+  else delete document.body.dataset.speaking;
+}
+
 export function stopSpeaking() {
   generation++;
   speechSynthesis.cancel();
   if (speaking) {
-    speaking = false;
+    setSpeaking(false);
     if (onSpeakEnd) onSpeakEnd();
   }
 }
@@ -130,12 +137,12 @@ export function speak(text) {
   const gen = generation;
   // Keep references: Chrome can garbage-collect a pending utterance and never fire onend
   const utterances = [];
-  speaking = true;
+  setSpeaking(true);
   if (onSpeakStart) onSpeakStart();
 
   function finish() {
     if (gen !== generation) return;
-    speaking = false;
+    setSpeaking(false);
     if (onSpeakEnd) onSpeakEnd();
   }
 

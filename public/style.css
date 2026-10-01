@@ -149,36 +149,7 @@
   font-weight: 600;
 }
 
-/* ===== Voice indicator animations ===== */
-.voice-orb {
-  box-shadow: 0 0 30px rgba(0,180,216,0.3), inset 0 0 20px rgba(0,180,216,0.15);
-  animation: voiceOrbPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes voiceOrbPulse {
-  0%, 100% {
-    box-shadow: 0 0 30px rgba(0,180,216,0.3), inset 0 0 20px rgba(0,180,216,0.15);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 50px rgba(0,180,216,0.5), inset 0 0 30px rgba(0,180,216,0.25);
-    transform: scale(1.05);
-  }
-}
-
-.voice-ring {
-  animation: voiceRing 2s ease-out infinite;
-}
-
-.voice-ring-2 {
-  animation: voiceRing 2s ease-out infinite 0.5s;
-}
-
-@keyframes voiceRing {
-  0% { transform: scale(1); opacity: 0.5; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
+/* ===== Voice view bars ===== */
 .voice-bar {
   animation: voiceBar 0.8s ease-in-out infinite;
 }
@@ -256,9 +227,9 @@
   flex-direction: column;
   min-width: 0;
   padding: 0 1rem 1rem;
-  background: linear-gradient(180deg, rgba(var(--theme-accent-rgb),0.04), rgba(255,255,255,0.01) 40%);
-  border: 1px solid rgba(255,255,255,0.06);
-  backdrop-filter: blur(8px);
+  background: linear-gradient(180deg, rgba(var(--theme-accent-rgb),0.05), rgba(6,8,18,0.3) 40%);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(6px);
   clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
   transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
 }
@@ -333,7 +304,7 @@
 
 /* Custom width (columns of 12) applies on large screens only; phones/tablets keep the responsive spans */
 @media (min-width: 1024px) {
-  #dash-grid > .hud-card { grid-column: span var(--w) / span var(--w); }
+  #dash-grid > [data-widget] { grid-column: span var(--w) / span var(--w); }
 }
 
 .hud-body {
@@ -490,6 +461,132 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: right;
+}
+
+/* ===== JARVIS core (reactor drawn behind the dashboard) ===== */
+@media (min-width: 1024px) {
+  #dash-grid > [data-rows="2"] { grid-row: span 2; }
+}
+#welcome { position: relative; }
+/* The reactor's glow can extend past the sides: never cause horizontal scrolling */
+#chat { overflow-x: hidden; }
+#dash-grid { position: relative; z-index: 1; }
+
+/* Background layer, positioned by core.js over the slot */
+.core-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--theme-accent-rgb),0.16), transparent 62%);
+}
+.core-particles { position: absolute; inset: 0; width: 100%; height: 100%; }
+.core-stage { position: absolute; inset: 19%; }
+.core-svg { width: 100%; height: 100%; overflow: visible; }
+
+/* Frameless grid slot that keeps the center free; shows the status */
+.core-slot {
+  position: relative;
+  min-height: 320px;
+  cursor: pointer;
+  border: 1px dashed transparent;
+  transition: border-color 0.3s;
+}
+.core-slot:hover { border-color: rgba(var(--theme-accent-rgb),0.18); }
+.core-slot .hud-resize { opacity: 0; }
+.core-slot:hover .hud-resize { opacity: 1; }
+.core-slot.hud-ghost { background: rgba(var(--theme-accent-rgb),0.05) !important; }
+
+.core-layer .ring { fill: none; stroke: var(--theme-accent); }
+.core-layer .ring-faint { stroke-width: 0.4; opacity: 0.25; }
+.core-layer .ring-arcs  { stroke-width: 1.2; opacity: 0.7; stroke-dasharray: 70 18 8 18 40 30 4 20; }
+.core-layer .ring-ticks { stroke-width: 5; opacity: 0.45; stroke-dasharray: 0.8 3.4; }
+.core-layer .ring-sweep { stroke-width: 2.4; opacity: 0.95; stroke-dasharray: 90 362; stroke-linecap: round;
+                          filter: drop-shadow(0 0 4px var(--theme-accent)); }
+.core-layer .ring-thin  { stroke-width: 0.6; opacity: 0.35; }
+.core-layer .ring-dots  { stroke-width: 1.6; opacity: 0.6; stroke-dasharray: 1 5; }
+.core-layer .core-center { fill: #fff; filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 14px var(--theme-accent)); }
+.core-layer .core-heart { transform-origin: 100px 100px; animation: coreHeart 2.6s ease-in-out infinite; }
+.core-layer .core-halo { opacity: 0.6; }
+
+.core-layer .spin { transform-origin: 100px 100px; animation: coreSpin linear infinite; }
+.core-layer .spin-a { animation-duration: 38s; }
+.core-layer .spin-b { animation-duration: 60s; animation-direction: reverse; }
+.core-layer .spin-c { animation-duration: 7s; }
+.core-layer .spin-d { animation-duration: 16s; animation-direction: reverse; }
+
+/* States: faster rings, stronger glow */
+.core-layer[data-state="wake"] .spin-c { animation-duration: 5s; }
+.core-layer[data-state="listening"] .spin-a { animation-duration: 14s; }
+.core-layer[data-state="listening"] .spin-c { animation-duration: 2.4s; }
+.core-layer[data-state="listening"] .core-heart { animation-duration: 0.9s; }
+.core-layer[data-state="thinking"] .spin-a { animation-duration: 8s; }
+.core-layer[data-state="thinking"] .spin-b { animation-duration: 12s; }
+.core-layer[data-state="thinking"] .spin-c { animation-duration: 1.4s; }
+.core-layer[data-state="thinking"] .spin-d { animation-duration: 4s; }
+.core-layer[data-state="speaking"] .core-heart { animation: coreTalk 0.5s ease-in-out infinite alternate; }
+.core-layer[data-state="speaking"] .spin-c { animation-duration: 3s; }
+.core-layer:not([data-state="idle"]) .core-halo { opacity: 1; }
+
+@keyframes coreSpin { to { transform: rotate(360deg); } }
+@keyframes coreHeart { 0%, 100% { transform: scale(0.92); opacity: 0.85; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes coreTalk { from { transform: scale(0.9); } to { transform: scale(1.18); } }
+
+.core-status {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 10px 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(var(--theme-accent-rgb),0.85);
+  pointer-events: none;
+}
+.core-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--theme-accent); box-shadow: 0 0 8px var(--theme-accent); }
+.core-slot:not([data-state="idle"]) .core-dot { animation: camLive 0.9s ease-in-out infinite; }
+
+/* Conversation background: same reactor, dim; lights up with activity, full in the voice view */
+#chat-reactor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.12;
+  transition: opacity 0.6s ease;
+}
+body[data-listen="active"] #chat-reactor,
+body[data-thinking] #chat-reactor,
+body[data-speaking] #chat-reactor { opacity: 0.3; }
+body.voice-view #chat-reactor { opacity: 1; }
+body:has(#welcome) #chat-reactor { display: none; } /* the dashboard has its own */
+.core-status-inner { bottom: 9%; }
+
+/* Pop-out button on the frameless core slot (hover only) */
+.core-pop { position: absolute; top: 6px; right: 6px; opacity: 0; transition: opacity 0.2s; }
+.core-slot:hover .core-pop { opacity: 1; }
+@media (hover: none) { .core-pop { opacity: 0.6; } }
+
+/* Reactor pop-out window */
+.reactor-window { position: relative; height: 100vh; padding: 0 !important; overflow: hidden; cursor: pointer; display: block !important; }
+.reactor-hint {
+  position: absolute; left: 0; right: 0; bottom: 12px; z-index: 1; text-align: center;
+  font: 10px 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.15em; text-transform: uppercase;
+  color: rgba(var(--theme-accent-rgb),0.45);
+  animation: reactorHint 6s ease forwards;
+}
+@keyframes reactorHint { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+:fullscreen .reactor-hint { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .core-layer .spin, .core-layer .core-heart { animation: none !important; }
 }
 
 /* ===== Reminder agenda ===== */

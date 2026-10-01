@@ -19,7 +19,13 @@ function containsWakeWord(text) {
 }
 
 // ===== Visual states =====
+function setBodyListen(value) {
+  if (value) document.body.dataset.listen = value;
+  else delete document.body.dataset.listen;
+}
+
 function setMicWake() {
+  setBodyListen("wake");
   micBtn.classList.remove(
     "bg-red-500/20", "border-red-500/50", "text-red-400",
     "text-gray-400", "border-white/10"
@@ -29,6 +35,7 @@ function setMicWake() {
 }
 
 function setMicActive() {
+  setBodyListen("active");
   micBtn.classList.remove(
     "bg-emerald-500/20", "border-emerald-500/50", "text-emerald-400",
     "text-gray-400", "border-white/10"
@@ -38,6 +45,7 @@ function setMicActive() {
 }
 
 function setMicOff() {
+  setBodyListen(null);
   micBtn.classList.remove(
     "bg-red-500/20", "border-red-500/50", "text-red-400",
     "bg-emerald-500/20", "border-emerald-500/50", "text-emerald-400"

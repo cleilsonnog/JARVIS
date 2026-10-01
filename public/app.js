@@ -30,16 +30,19 @@ document.getElementById("jarvis-home").addEventListener("click", () => {
 
 // ===== Voice indicator controls =====
 function showVoiceIndicator() {
+  document.body.classList.add("voice-view");
   voiceIndicator.classList.remove("hidden");
   voiceIndicator.classList.add("flex");
   chatEl.classList.add("hidden");
 }
 
 function hideVoiceIndicator() {
+  document.body.classList.remove("voice-view");
   voiceIndicator.classList.add("hidden");
   voiceIndicator.classList.remove("flex");
   chatEl.classList.remove("hidden");
-  scrollToBottom();
+  // Only conversations jump to the latest message; the dashboard keeps its scroll position
+  if (!document.getElementById("welcome")) scrollToBottom();
 }
 
 setOnSpeakStart(() => {
@@ -188,6 +191,7 @@ form.addEventListener("submit", async (e) => {
   input.placeholder = "Mensagem para JARVIS...";
   sendBtn.disabled = true;
   showTyping();
+  document.body.dataset.thinking = "1";
 
   try {
     const body = { message, sessionId: getSessionId() };
@@ -281,6 +285,7 @@ form.addEventListener("submit", async (e) => {
   }
 
   sendBtn.disabled = false;
+  delete document.body.dataset.thinking;
   replyDone();
   // On phones focusing the input pops the keyboard over the voice UI
   if (!IS_TOUCH) input.focus();

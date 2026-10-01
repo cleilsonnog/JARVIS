@@ -1,5 +1,6 @@
 // ===== Pop-out window: renders one dashboard card =====
-import { WIDGETS, refreshWidgets, startWidgetTimers } from "./widgets.js";
+import { WIDGETS, refreshWidgets, startWidgetTimers, mountWidgets } from "./widgets.js";
+import { mountStandaloneReactor } from "./core.js";
 import "./theme.js";
 
 const root = document.getElementById("widget-root");
@@ -10,7 +11,15 @@ if (!widget) {
   root.innerHTML = `<p class="m-auto text-sm text-gray-500">Widget não encontrado.</p>`;
 } else {
   document.title = `JARVIS · ${widget.title}`;
-  root.innerHTML = widget.render();
+  if (id === "core") {
+    // Reactor only, filling the window (made to be maximized on another monitor)
+    root.className = "reactor-window";
+    root.innerHTML = `<p class="reactor-hint">Toque: falar · Duplo clique: tela cheia</p>`;
+    mountStandaloneReactor(root);
+  } else {
+    root.innerHTML = widget.render();
+    mountWidgets(root);
+  }
   startWidgetTimers();
   refreshWidgets();
 }

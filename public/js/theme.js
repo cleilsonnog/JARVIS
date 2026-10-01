@@ -62,9 +62,6 @@ function applyTheme(index) {
       background: rgba(${rgb},0.4) !important;
       box-shadow: 0 0 6px rgba(${rgb},0.3) !important;
     }
-    .voice-orb {
-      box-shadow: 0 0 30px rgba(${rgb},0.3), inset 0 0 20px rgba(${rgb},0.15) !important;
-    }
     .voice-bar {
       background: ${t.accent}cc !important;
     }

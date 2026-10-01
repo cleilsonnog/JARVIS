@@ -1,5 +1,5 @@
 // ===== Dashboard: layout, drag, resize, minimize, pop-out =====
-import { WIDGETS, DEFAULT_ORDER, refreshWidgets, startWidgetTimers } from "./widgets.js";
+import { WIDGETS, DEFAULT_ORDER, refreshWidgets, startWidgetTimers, mountWidgets } from "./widgets.js";
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
@@ -24,9 +24,13 @@ let sizes = loadJSON(SIZES_KEY, {});
 const saveSizes = () => localStorage.setItem(SIZES_KEY, JSON.stringify(sizes));
 
 function getSavedOrder() {
-  const saved = (localStorage.getItem(LAYOUT_KEY) || "").split("|").filter((id) => WIDGETS[id]);
-  // Append widgets added after the layout was saved
-  return [...saved, ...DEFAULT_ORDER.filter((id) => !saved.includes(id))];
+  const order = (localStorage.getItem(LAYOUT_KEY) || "").split("|").filter((id) => WIDGETS[id]);
+  if (order.length === 0) return [...DEFAULT_ORDER];
+  // Widgets added after the layout was saved go to their default position, not the end
+  DEFAULT_ORDER.forEach((id, i) => {
+    if (!order.includes(id)) order.splice(Math.min(i, order.length), 0, id);
+  });
+  return order;
 }
 
 // ----- Render -----
@@ -39,12 +43,9 @@ function greeting() {
 
 export function renderDashboard() {
   chat.innerHTML = `
-    <div id="welcome" class="max-w-6xl mx-auto w-full animate-slide-up">
+    <div id="welcome" class="max-w-7xl mx-auto w-full animate-slide-up">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-full border-2 border-jarvis-500/40 animate-pulse-glow flex items-center justify-center">
-            <div class="w-4 h-4 rounded-full bg-jarvis-500/20 border border-jarvis-500/40"></div>
-          </div>
           <div>
             <h2 class="text-xl font-light text-gray-200">${greeting()}. Eu sou o <span class="text-jarvis-400 font-semibold tracking-wider">JARVIS</span></h2>
             <p class="flex items-center gap-2 text-[11px] text-gray-500 font-mono uppercase tracking-wider mt-0.5">
@@ -63,12 +64,13 @@ export function renderDashboard() {
       </div>
     </div>`;
 
-  document.querySelectorAll("#dash-grid .hud-card").forEach((card) => {
+  document.querySelectorAll("#dash-grid > [data-widget]").forEach((card) => {
     applySize(card);
     applyPopped(card);
     initResize(card);
   });
   initSortable();
+  mountWidgets(document.getElementById("dash-grid"));
   refreshWidgets();
 }
 
@@ -90,8 +92,8 @@ function initSortable() {
   const grid = document.getElementById("dash-grid");
   if (!window.Sortable || !grid) return;
   sortable = Sortable.create(grid, {
-    handle: ".hud-handle",
-    draggable: ".hud-card",
+    handle: ".hud-handle, .core-slot",  // the core slot has no header: drag it anywhere
+    draggable: "[data-widget]",
     filter: ".hud-btn",
     preventOnFilter: false,
     dataIdAttr: "data-widget",
@@ -160,7 +162,9 @@ function initResize(card) {
 function popOut(card) {
   const id = card.dataset.widget;
   const r = card.getBoundingClientRect();
-  const features = `popup,width=${Math.round(r.width)},height=${Math.round(Math.max(r.height, 160))},left=${window.screenX + Math.round(r.left)},top=${window.screenY + Math.round(r.top)}`;
+  // The reactor opens big (meant to be maximized on another screen); cards open at their size
+  const [w, h] = id === "core" ? [960, 720] : [Math.round(r.width), Math.round(Math.max(r.height, 160))];
+  const features = `popup,width=${w},height=${h},left=${window.screenX + Math.round(r.left)},top=${window.screenY + Math.round(r.top)}`;
   const win = window.open(`/widget.html?id=${id}`, `jarvis-widget-${id}`, features);
   if (!win) {
     alert("O navegador bloqueou a janela. Permita pop-ups para este site.");
@@ -204,7 +208,7 @@ chat.addEventListener("click", (e) => {
 
   const action = e.target.closest("[data-action]");
   if (action) {
-    const card = action.closest(".hud-card");
+    const card = action.closest("[data-widget]");
     const id = card.dataset.widget;
     if (action.dataset.action === "min") {
       sizes[id] = { ...sizes[id], min: !sizes[id]?.min };
@@ -222,7 +226,7 @@ chat.addEventListener("click", (e) => {
     localStorage.removeItem(LAYOUT_KEY);
     sizes = {};
     saveSizes();
-    document.querySelectorAll("#dash-grid .hud-card").forEach(applySize);
+    document.querySelectorAll("#dash-grid > [data-widget]").forEach(applySize);
     sortable?.sort(DEFAULT_ORDER, true);
   }
 });
