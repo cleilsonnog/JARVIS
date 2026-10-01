@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS</title>
+  <meta name="theme-color" content="#04040d">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tailwind.config.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<!-- Single dashboard card in its own window (opened by "Destacar em janela") -->
+<body class="is-popout bg-dark-600 text-gray-200 h-screen overflow-hidden antialiased">
+  <div class="fixed inset-0 z-0 pointer-events-none">
+    <div class="absolute inset-0 bg-grid opacity-[0.03]"></div>
+  </div>
+  <main id="widget-root" class="relative z-10 h-screen p-2 grid"></main>
+  <script type="module" src="js/widget-page.js"></script>
+</body>
+</html>

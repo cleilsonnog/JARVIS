@@ -1,0 +1,13 @@
+node_modules/
+
+# Secrets
+.env
+.env.*
+
+# Local data (conversations, memories, reminders) and logs
+jarvis.db
+jarvis.db-*
+*.log
+
+# Local tooling
+.claude/
