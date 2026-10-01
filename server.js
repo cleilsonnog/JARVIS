@@ -2,15 +2,18 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const routes = require("./src/routes");
-const { authMiddleware, loginHandler } = require("./src/auth");
+const { authMiddleware, loginHandler, logoutHandler } = require("./src/auth");
 
 const app = express();
+// Behind Nginx: trust X-Forwarded-* from the local proxy (real client IP for rate limiting, HTTPS for secure cookies)
+app.set("trust proxy", "loopback");
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "10mb" }));
 
 // Login API (before auth middleware)
 app.post("/api/login", loginHandler);
+app.post("/api/logout", logoutHandler);
 
 // Auth middleware (skipped if JARVIS_PASSWORD not set)
 app.use(authMiddleware);

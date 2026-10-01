@@ -26,6 +26,11 @@ db.exec(`
     notified INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     key TEXT NOT NULL UNIQUE,
@@ -49,6 +54,11 @@ const stmts = {
   getReminders: db.prepare("SELECT id, text, remind_at, notified FROM reminders WHERE notified = 0 ORDER BY remind_at ASC"),
   deleteReminder: db.prepare("DELETE FROM reminders WHERE id = ?"),
   getTodayReminders: db.prepare("SELECT id, text, remind_at, notified FROM reminders WHERE date(remind_at) = date('now', 'localtime') ORDER BY remind_at ASC"),
+  // Sessions (token stored as SHA-256 hash; times in ms)
+  addSession: db.prepare("INSERT INTO sessions (token_hash, created_at, expires_at) VALUES (?, ?, ?)"),
+  getSession: db.prepare("SELECT expires_at FROM sessions WHERE token_hash = ?"),
+  deleteSession: db.prepare("DELETE FROM sessions WHERE token_hash = ?"),
+  deleteExpiredSessions: db.prepare("DELETE FROM sessions WHERE expires_at < ?"),
   // Memories
   saveMemory: db.prepare("INSERT INTO memories (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"),
   getMemory: db.prepare("SELECT key, value FROM memories WHERE key = ?"),
