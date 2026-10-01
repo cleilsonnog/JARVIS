@@ -1,5 +1,5 @@
 // Service Worker - JARVIS PWA
-const CACHE_NAME = "jarvis-v6";
+const CACHE_NAME = "jarvis-v7";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -23,8 +23,17 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
+  // Precache only real files: when logged out every asset redirects to the login page,
+  // and caching that HTML under "/app.js" etc. would break the app later
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(STATIC_ASSETS.map(async (url) => {
+        try {
+          const res = await fetch(url, { redirect: "manual" });
+          if (res.ok) await cache.put(url, res);
+        } catch {}
+      }))
+    )
   );
   self.skipWaiting();
 });
@@ -41,13 +50,14 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   // API: network only (offline JSON fallback)
   if (e.request.url.includes("/api/")) {
-    e.respondWith(fetch(e.request).catch(() => new Response('{"error":"offline"}', { headers: { "Content-Type": "application/json" } })));
+    // 503 (not 200) so callers never mistake "offline" for success
+    e.respondWith(fetch(e.request).catch(() => new Response('{"error":"offline"}', { status: 503, headers: { "Content-Type": "application/json" } })));
   } else {
     // Network first so deploys show up immediately; cache is the offline fallback
     e.respondWith(
       fetch(e.request)
         .then((res) => {
-          if (res.ok && e.request.method === "GET") {
+          if (res.ok && !res.redirected && e.request.method === "GET") {
             const copy = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(e.request, copy));
           }

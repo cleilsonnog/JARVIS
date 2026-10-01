@@ -58,7 +58,8 @@ function authMiddleware(req, res, next) {
   if (req.path === "/login" || req.path === "/api/login") return next();
 
   // Allow login page and PWA assets
-  if (req.path === "/login.html" || req.path === "/tailwind.css" || req.path === "/manifest.json" || req.path.startsWith("/icons/")) return next();
+  // sw.js must stay public: if it redirected to login, a logged-out browser could never update a stale worker
+  if (req.path === "/login.html" || req.path === "/tailwind.css" || req.path === "/sw.js" || req.path === "/manifest.json" || req.path.startsWith("/icons/")) return next();
 
   // Check session cookie
   const cookies = parseCookies(req.headers.cookie || "");

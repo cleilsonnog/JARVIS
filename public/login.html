@@ -52,7 +52,7 @@
         });
 
         if (res.ok) {
-          window.location.href = "/";
+          window.location.replace("/");
         } else {
           const data = await res.json();
           errorEl.textContent = data.error || "Erro ao fazer login";
