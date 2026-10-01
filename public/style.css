@@ -589,6 +589,16 @@ body:has(#welcome) #chat-reactor { display: none; } /* the dashboard has its own
   .core-layer .spin, .core-layer .core-heart { animation: none !important; }
 }
 
+/* ===== Versículo do dia ===== */
+.verse-text {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #e5e7eb;
+  font-style: italic;
+  border-left: 2px solid rgba(var(--theme-accent-rgb),0.6);
+  padding-left: 0.9rem;
+}
+
 /* ===== Reminder agenda ===== */
 .agenda-row { transition: opacity 0.25s; }
 /* Row actions appear on hover with a mouse; always visible on touch screens */

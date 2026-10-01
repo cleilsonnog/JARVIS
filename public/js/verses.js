@@ -1,0 +1,55 @@
+// ===== Versículo do dia (NVI) =====
+// Curated list; one verse per day, cycling through the year.
+// Bible text: Nova Versão Internacional® (NVI®), Copyright © 1993, 2000, 2011 by Biblica, Inc.
+// Used with the quotation allowance (up to 500 verses with attribution).
+// Review/edit freely: { ref, text }.
+
+export const VERSES = [
+  { ref: "João 3:16", text: "Porque Deus tanto amou o mundo que deu o seu Filho Unigênito, para que todo o que nele crer não pereça, mas tenha a vida eterna." },
+  { ref: "Salmos 23:1", text: "O Senhor é o meu pastor; de nada terei falta." },
+  { ref: "Filipenses 4:13", text: "Tudo posso naquele que me fortalece." },
+  { ref: "Romanos 8:28", text: "Sabemos que Deus age em todas as coisas para o bem daqueles que o amam, dos que foram chamados de acordo com o seu propósito." },
+  { ref: "Provérbios 3:5-6", text: "Confie no Senhor de todo o seu coração e não se apoie em seu próprio entendimento; reconheça o Senhor em todos os seus caminhos, e ele endireitará as suas veredas." },
+  { ref: "Isaías 41:10", text: "Por isso não tema, pois estou com você; não tenha medo, pois sou o seu Deus. Eu o fortalecerei e o ajudarei; eu o segurarei com a minha mão direita vitoriosa." },
+  { ref: "Josué 1:9", text: "Não fui eu que ordenei a você? Seja forte e corajoso! Não se apavore, nem desanime, pois o Senhor, o seu Deus, estará com você por onde você andar." },
+  { ref: "Mateus 11:28", text: "Venham a mim, todos os que estão cansados e sobrecarregados, e eu darei descanso a vocês." },
+  { ref: "Jeremias 29:11", text: "Porque sou eu que conheço os planos que tenho para vocês, diz o Senhor, planos de fazê-los prosperar e não de causar dano, planos de dar a vocês esperança e um futuro." },
+  { ref: "Salmos 46:1", text: "Deus é o nosso refúgio e a nossa fortaleza, auxílio sempre presente na adversidade." },
+  { ref: "Filipenses 4:6-7", text: "Não andem ansiosos por coisa alguma, mas em tudo, pela oração e súplicas, e com ação de graças, apresentem seus pedidos a Deus. E a paz de Deus, que excede todo o entendimento, guardará o coração e a mente de vocês em Cristo Jesus." },
+  { ref: "1 Pedro 5:7", text: "Lancem sobre ele toda a sua ansiedade, porque ele tem cuidado de vocês." },
+  { ref: "Mateus 6:33", text: "Busquem, pois, em primeiro lugar o Reino de Deus e a sua justiça, e todas essas coisas serão acrescentadas a vocês." },
+  { ref: "Salmos 119:105", text: "A tua palavra é lâmpada que ilumina os meus passos e luz que clareia o meu caminho." },
+  { ref: "Isaías 40:31", text: "Mas aqueles que esperam no Senhor renovam as suas forças. Voam alto como águias; correm e não ficam exaustos, andam e não se cansam." },
+  { ref: "2 Timóteo 1:7", text: "Pois Deus não nos deu espírito de covardia, mas de poder, de amor e de equilíbrio." },
+  { ref: "Hebreus 11:1", text: "Ora, a fé é a certeza daquilo que esperamos e a prova das coisas que não vemos." },
+  { ref: "Romanos 12:2", text: "Não se amoldem ao padrão deste mundo, mas transformem-se pela renovação da sua mente, para que sejam capazes de experimentar e comprovar a boa, agradável e perfeita vontade de Deus." },
+  { ref: "Gálatas 5:22-23", text: "Mas o fruto do Espírito é amor, alegria, paz, paciência, amabilidade, bondade, fidelidade, mansidão e domínio próprio. Contra essas coisas não há lei." },
+  { ref: "1 Coríntios 13:4", text: "O amor é paciente, o amor é bondoso. Não inveja, não se vangloria, não se orgulha." },
+  { ref: "Salmos 37:5", text: "Entregue o seu caminho ao Senhor; confie nele, e ele agirá." },
+  { ref: "Lamentações 3:22-23", text: "Graças ao grande amor do Senhor é que não somos consumidos, pois as suas misericórdias são inesgotáveis. Renovam-se cada manhã; grande é a sua fidelidade!" },
+  { ref: "João 14:6", text: "Respondeu Jesus: Eu sou o caminho, a verdade e a vida. Ninguém vem ao Pai, a não ser por mim." },
+  { ref: "João 16:33", text: "Eu lhes disse essas coisas para que em mim vocês tenham paz. Neste mundo vocês terão aflições; contudo, tenham ânimo! Eu venci o mundo." },
+  { ref: "Salmos 121:1-2", text: "Levanto os meus olhos para os montes e pergunto: De onde me vem o socorro? O meu socorro vem do Senhor, que fez os céus e a terra." },
+  { ref: "Mateus 5:16", text: "Assim brilhe a luz de vocês diante dos homens, para que vejam as suas boas obras e glorifiquem ao Pai de vocês, que está nos céus." },
+  { ref: "2 Coríntios 5:17", text: "Portanto, se alguém está em Cristo, é nova criação. As coisas antigas já passaram; eis que surgiram coisas novas!" },
+  { ref: "Tiago 1:5", text: "Se algum de vocês tem falta de sabedoria, peça-a a Deus, que a todos dá livremente, de boa vontade; e lhe será concedida." },
+  { ref: "Salmos 27:1", text: "O Senhor é a minha luz e a minha salvação; de quem terei temor? O Senhor é o meu forte refúgio; de quem terei medo?" },
+  { ref: "Provérbios 16:3", text: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos." },
+  { ref: "Romanos 15:13", text: "Que o Deus da esperança os encha de toda alegria e paz, por sua confiança nele, para que vocês transbordem de esperança, pelo poder do Espírito Santo." },
+  { ref: "Colossenses 3:23", text: "Tudo o que fizerem, façam de todo o coração, como para o Senhor, e não para os homens." },
+  { ref: "Miqueias 6:8", text: "Ele mostrou a você, ó homem, o que é bom e o que o Senhor exige: pratique a justiça, ame a fidelidade e ande humildemente com o seu Deus." },
+  { ref: "Salmos 34:8", text: "Provem, e vejam como o Senhor é bom. Como é feliz o homem que nele se refugia!" },
+  { ref: "Isaías 26:3", text: "Tu, Senhor, guardarás em perfeita paz aquele cujo propósito está firme, porque em ti confia." },
+  { ref: "Salmos 118:24", text: "Este é o dia em que o Senhor agiu; alegremo-nos e exultemos neste dia." },
+  { ref: "1 João 4:19", text: "Nós amamos porque ele nos amou primeiro." },
+  { ref: "Hebreus 13:8", text: "Jesus Cristo é o mesmo, ontem, hoje e para sempre." },
+  { ref: "Romanos 8:31", text: "Que diremos, pois, diante dessas coisas? Se Deus é por nós, quem será contra nós?" },
+  { ref: "Efésios 2:8", text: "Pois vocês são salvos pela graça, por meio da fé, e isto não vem de vocês, é dom de Deus." },
+];
+
+// Same verse all day (local date), changes at midnight
+export function verseOfTheDay(date = new Date()) {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((date - start) / 86400000);
+  return VERSES[dayOfYear % VERSES.length];
+}

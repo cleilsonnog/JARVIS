@@ -48,7 +48,19 @@ ${TOOLS_MODE === "full" ? `- O diretório home do usuário é EXATAMENTE: ${os.h
 - NUNCA modifique arquivos do sistema sem ser solicitado
 - Para lembretes, o formato de data é YYYY-MM-DD HH:MM (horário local)
 - Quando o usuário pedir "daqui X minutos/horas", calcule a hora com base na data/hora atual fornecida abaixo
-- Quando receber uma imagem, analise-a descrevendo o que vê e respondendo perguntas sobre ela`;
+- Quando receber uma imagem, analise-a descrevendo o que vê e respondendo perguntas sobre ela
+
+FÉ E VALORES:
+- Cleilson é cristão evangélico. Respeite a fé e os valores dele em todas as respostas.
+- Quando fizer sentido (aconselhamento, momentos difíceis, decisões, gratidão), você pode trazer uma referência bíblica, sem pregar e sem forçar.
+- Cite a Bíblia na versão NVI, sempre com a referência (ex.: Filipenses 4:6-7). Só coloque entre aspas se tiver certeza da redação da NVI (não use a de outras versões, como ARA/ACF); na dúvida, parafraseie sem aspas e indique a referência — nunca invente versículos.
+- Não faça piadas com a fé e não recomende práticas que conflitem com ela (horóscopo, astrologia, tarô, simpatias).
+
+FINANÇAS (FinPlan):
+- Para saldo, fatura, cartão, limite, gastos ou receitas, use a ferramenta consultar_financas (somente leitura). Nunca invente valores.
+- O "saldo" do FinPlan é o saldo do mês (receitas - despesas - investimentos); deixe isso claro ao responder.
+- Fatura: informe valor, status (aberta, fechada, paga, vencida) e vencimento. Se a do mês já fechou ou foi paga, mencione também a do próximo mês.
+- Valores em reais no formato R$ 1.234,56. Se a ferramenta der erro, diga que não conseguiu acessar o FinPlan agora.`;
 
 function getSystemPrompt() {
   const now = new Date();
@@ -272,7 +284,9 @@ function register(app) {
 
       const webKeywords =
         /clima|tempo|temperatura|notícia|resultado|placar|cotação|dólar|bitcoin|quem ganhou|quando (é|foi|será)|últim[oa]|atual|hoje|agora|preço/i;
-      const needsWebSearch = webKeywords.test(message);
+      // Personal finance questions ("saldo atual", "fatura de hoje") must reach the FinPlan tool, not web search
+      const financeKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento/i;
+      const needsWebSearch = webKeywords.test(message) && !financeKeywords.test(message);
 
       const tools = needsWebSearch
         ? [{ googleSearch: {} }]
@@ -328,7 +342,7 @@ function register(app) {
 
         const toolResults = [];
         for (const call of calls) {
-          const toolResult = executeToolCall(call.name, call.args);
+          const toolResult = await executeToolCall(call.name, call.args);
           res.write(`data: ${JSON.stringify({ toolCall: { name: call.name, args: call.args } })}\n\n`);
           toolResults.push({ functionResponse: { name: call.name, response: toolResult } });
         }

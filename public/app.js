@@ -254,6 +254,7 @@ form.addEventListener("submit", async (e) => {
                 save_memory: "Memorizado",
                 recall_memories: "Lembrando",
                 delete_memory: "Esquecido",
+                consultar_financas: "Consultando FinPlan",
               };
               const label = toolNames[tc.name] || tc.name;
               const detail = tc.args.command || tc.args.app_name || tc.args.file_path || tc.args.key || tc.args.directory || "";

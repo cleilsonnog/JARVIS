@@ -2,9 +2,10 @@
 // Shared by the main dashboard (dashboard.js) and pop-out windows (widget-page.js).
 import { fetchAgenda, renderAgenda } from "./agenda.js";
 import { coreSlot, mountCore } from "./core.js";
+import { verseOfTheDay } from "./verses.js";
 
 // Large screens: core in the middle spanning two rows, cards around it
-export const DEFAULT_ORDER = ["clock", "core", "reminders", "cpu", "ram", "disk", "system", "actions"];
+export const DEFAULT_ORDER = ["clock", "core", "reminders", "cpu", "ram", "verse", "actions", "disk", "system"];
 
 const HISTORY_SIZE = 30;
 const GAUGE_C = 2 * Math.PI * 34; // gauge circumference (r=34)
@@ -20,6 +21,8 @@ const ICONS = {
   bolt: `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`,
   server: `<rect x="2" y="3" width="20" height="7" rx="1"/><rect x="2" y="14" width="20" height="7" rx="1"/><path d="M6 6.5h.01M6 17.5h.01"/>`,
   minimize: `<path d="M6 9l6 6 6-6"/>`,
+  book: `<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M12 6v6M9 9h6"/>`,
+  speaker: `<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/>`,
   popout: `<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>`,
 };
 
@@ -108,9 +111,21 @@ export const WIDGETS = {
 
   cpu: { title: "Processador", w: 4, md: 6, render: () => card("cpu", "SYS.01", "Processador", "cpu", gaugeBody("cpu", true)) },
   ram: { title: "Memória", w: 4, md: 6, render: () => card("ram", "SYS.02", "Memória", "ram", gaugeBody("ram", true)) },
-  disk: { title: "Armazenamento", w: 4, md: 6, render: () => card("disk", "SYS.03", "Armazenamento", "disk", gaugeBody("disk", false)) },
+  verse: { title: "Versículo do dia", w: 6, md: 12, render: () => {
+    const v = verseOfTheDay();
+    return card("verse", "NVI", "Versículo do dia", "book", `
+      <blockquote class="verse-text">“${v.text}”</blockquote>
+      <div class="mt-3 flex items-center justify-between gap-3">
+        <span class="text-xs font-mono text-jarvis-400">${v.ref} · NVI</span>
+        <button type="button" class="hud-btn-text verse-speak flex items-center gap-1.5" data-speak="${v.ref.replace(/"/g, "")}. ${v.text.replace(/"/g, "")}" title="Ouvir">
+          ${icon("speaker", 12)} Ouvir
+        </button>
+      </div>`);
+  } },
 
-  actions: { title: "Ações rápidas", w: 4, md: 12, render: () => card("actions", "CMD", "Ações rápidas", "bolt", `
+  disk: { title: "Armazenamento", w: 6, md: 6, render: () => card("disk", "SYS.03", "Armazenamento", "disk", gaugeBody("disk", false)) },
+
+  actions: { title: "Ações rápidas", w: 6, md: 12, render: () => card("actions", "CMD", "Ações rápidas", "bolt", `
     <div class="grid grid-cols-2 gap-2">
       ${PROMPTS.map((p) => `
         <button type="button" class="dash-prompt group text-left p-3 border border-white/5 bg-white/[0.02] hover:border-jarvis-500/40 hover:bg-jarvis-500/5 transition-colors" data-prompt="${p.text}">
@@ -123,7 +138,7 @@ export const WIDGETS = {
         <button type="button" class="dash-prompt px-2.5 py-1 text-[11px] font-mono text-gray-400 border border-white/10 hover:text-jarvis-400 hover:border-jarvis-500/40 transition-colors" data-prompt="${c}">${c}</button>`).join("")}
     </div>`) },
 
-  system: { title: "Sistema", w: 4, md: 6, render: () => card("system", "NET", "Sistema", "server", `
+  system: { title: "Sistema", w: 6, md: 6, render: () => card("system", "NET", "Sistema", "server", `
     <dl class="hud-kv">
       <dt>Host</dt><dd id="dash-hostname">--</dd>
       <dt>SO</dt><dd id="dash-platform">--</dd>

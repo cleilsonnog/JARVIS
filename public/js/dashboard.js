@@ -1,5 +1,6 @@
 // ===== Dashboard: layout, drag, resize, minimize, pop-out =====
 import { WIDGETS, DEFAULT_ORDER, refreshWidgets, startWidgetTimers, mountWidgets } from "./widgets.js";
+import { speak } from "./tts.js";
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
@@ -203,6 +204,12 @@ chat.addEventListener("click", (e) => {
   const prompt = e.target.closest(".dash-prompt");
   if (prompt) {
     submitPrompt(prompt.dataset.prompt, prompt.dataset.fill !== undefined);
+    return;
+  }
+
+  const speakBtn = e.target.closest("[data-speak]");
+  if (speakBtn) {
+    speak(speakBtn.dataset.speak);
     return;
   }
 

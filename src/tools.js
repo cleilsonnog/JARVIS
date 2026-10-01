@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const { stmts } = require("./database");
+const finplan = require("./finplan");
 
 const functionDeclarations = [
   {
@@ -121,6 +122,24 @@ const SAFE_DISABLED = new Set(["execute_command", "open_application"]);
 
 if (TOOLS_MODE === "safe") fs.mkdirSync(FILES_ROOT, { recursive: true });
 
+// Read-only finance tool, offered only when the FinPlan integration is configured
+if (finplan.isConfigured()) {
+  functionDeclarations.push({
+    name: "consultar_financas",
+    description:
+      "Consulta (somente leitura) as finanças do usuário no FinPlan: saldo do mês (receitas - despesas - investimentos), " +
+      "totais do mês, cartões de crédito com fatura do mês e do próximo mês (valor, status OPEN/CLOSED/PAID/OVERDUE, " +
+      "fechamento, vencimento), limite e limite disponível, e últimas transações. " +
+      "Use para perguntas sobre saldo, fatura, cartão, limite, gastos ou receitas.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        mes: { type: "INTEGER", description: "Mês (1-12) de referência; omita para o mês atual" },
+      },
+    },
+  });
+}
+
 // Declarations actually offered to the model (disabled tools are not even advertised)
 const activeDeclarations = functionDeclarations.filter(
   (d) => TOOLS_MODE === "full" || !SAFE_DISABLED.has(d.name)
@@ -199,6 +218,9 @@ function executeToolCall(name, args) {
         const dir = resolvePath(args.directory || ".");
         return { output: listDir(dir).slice(0, 5000) };
       }
+      case "consultar_financas":
+        // Async: the caller awaits it; errors become a tool error instead of a rejection
+        return finplan.getFinancialSummary(args.mes).catch((err) => ({ error: err.message }));
       case "create_reminder": {
         stmts.addReminder.run(args.text, args.remind_at);
         return { output: `Lembrete criado: "${args.text}" para ${args.remind_at}` };
