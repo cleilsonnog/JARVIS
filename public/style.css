@@ -611,9 +611,11 @@ body:has(#welcome) #chat-reactor { display: none; } /* the dashboard has its own
 /* Row actions appear on hover with a mouse; always visible on touch screens */
 @media (hover: hover) {
   .agenda-row .agenda-actions { opacity: 0; transition: opacity 0.15s; }
-  .agenda-row:hover .agenda-actions { opacity: 1; }
+  .agenda-row:hover .agenda-actions, .memory-row:hover .agenda-actions { opacity: 1; }
+  .memory-row .agenda-actions { opacity: 0; transition: opacity 0.15s; }
 }
 /* Dashboard card: scroll inside unless the user resized the card (then the card scrolls) */
+.hud-card:not([style*="height"]) #dash-memory-list,
 .hud-card:not([style*="height"]) #dash-reminders-list {
   max-height: 240px;
   overflow-y: auto;

@@ -8,6 +8,7 @@ const { db, stmts } = require("./database");
 const { functionDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT } = require("./tools");
 const push = require("./push");
 const tts = require("./tts");
+const memory = require("./memory");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -112,6 +113,24 @@ function register(app) {
   // the page shows them as cards; it no longer decides what is "notified".
   app.get("/api/reminders/pending", (req, res) => {
     res.json(stmts.getActiveReminders.all());
+  });
+
+  // Memories ("O que sei sobre você" card)
+  app.get("/api/memories", (req, res) => {
+    res.json(stmts.listMemories.all());
+  });
+
+  app.put("/api/memories/:key", (req, res) => {
+    const value = String(req.body?.value || "").trim().slice(0, 300);
+    if (!value) return res.status(400).json({ error: "Valor vazio" });
+    if (!stmts.getMemory.get(req.params.key)) return res.status(404).json({ error: "Memória não encontrada" });
+    stmts.saveMemoryFrom.run(req.params.key, value, "manual");
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/memories/:key", (req, res) => {
+    stmts.deleteMemory.run(req.params.key);
+    res.json({ ok: true });
   });
 
   app.get("/api/reminders/upcoming", (req, res) => {
@@ -361,6 +380,13 @@ function register(app) {
 
       stmts.addMessage.run(sessionId, "user", message);
       if (fullResponse) stmts.addMessage.run(sessionId, "assistant", fullResponse);
+
+      // Learn durable facts from this exchange in the background (doesn't delay the reply)
+      if (fullResponse && process.env.MEMORY_LEARNING !== "off") {
+        memory.learnFromExchange(message, fullResponse)
+          .then((changes) => changes.length && console.log("Memória:", changes.map((c) => `${c.action} ${c.key}`).join(", ")))
+          .catch((err) => console.error("Erro memória:", err.message));
+      }
       stmts.updateTimestamp.run(sessionId);
 
       if (searchQueries.length > 0) {

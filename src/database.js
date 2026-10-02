@@ -55,6 +55,9 @@ db.exec(`
 const reminderCols = db.prepare("PRAGMA table_info(reminders)").all().map((c) => c.name);
 // notified = alert already sent; done = user confirmed it ("Concluir")
 if (!reminderCols.includes("done")) db.exec("ALTER TABLE reminders ADD COLUMN done INTEGER DEFAULT 0");
+// source = who wrote the memory: "manual" (user/tool) or "auto" (learned from conversations)
+const memoryCols = db.prepare("PRAGMA table_info(memories)").all().map((c) => c.name);
+if (!memoryCols.includes("source")) db.exec("ALTER TABLE memories ADD COLUMN source TEXT DEFAULT 'manual'");
 
 const stmts = {
   createConversation: db.prepare("INSERT INTO conversations (id, title) VALUES (?, ?)"),
@@ -93,6 +96,8 @@ const stmts = {
   saveMemory: db.prepare("INSERT INTO memories (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"),
   getMemory: db.prepare("SELECT key, value FROM memories WHERE key = ?"),
   getAllMemories: db.prepare("SELECT key, value FROM memories ORDER BY updated_at DESC"),
+  listMemories: db.prepare("SELECT key, value, source, updated_at FROM memories ORDER BY updated_at DESC"),
+  saveMemoryFrom: db.prepare("INSERT INTO memories (key, value, source) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, source = excluded.source, updated_at = CURRENT_TIMESTAMP"),
   deleteMemory: db.prepare("DELETE FROM memories WHERE key = ?"),
   searchMemories: db.prepare("SELECT key, value FROM memories WHERE key LIKE ? OR value LIKE ? ORDER BY updated_at DESC"),
 };

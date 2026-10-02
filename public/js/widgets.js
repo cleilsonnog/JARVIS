@@ -5,7 +5,7 @@ import { coreSlot, mountCore } from "./core.js";
 import { verseOfTheDay } from "./verses.js";
 
 // Large screens: core in the middle spanning two rows, cards around it
-export const DEFAULT_ORDER = ["clock", "core", "reminders", "cpu", "ram", "verse", "actions", "disk", "system"];
+export const DEFAULT_ORDER = ["clock", "core", "reminders", "cpu", "ram", "verse", "memory", "actions", "system", "disk"];
 
 const HISTORY_SIZE = 30;
 const GAUGE_C = 2 * Math.PI * 34; // gauge circumference (r=34)
@@ -21,6 +21,7 @@ const ICONS = {
   bolt: `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`,
   server: `<rect x="2" y="3" width="20" height="7" rx="1"/><rect x="2" y="14" width="20" height="7" rx="1"/><path d="M6 6.5h.01M6 17.5h.01"/>`,
   minimize: `<path d="M6 9l6 6 6-6"/>`,
+  brain: `<path d="M9.5 2A2.5 2.5 0 007 4.5v.5a3 3 0 00-3 3v.5A3 3 0 003 11a3 3 0 001 2.24V14a3 3 0 003 3h.5a2.5 2.5 0 004.5 1.5V3.5A2.5 2.5 0 009.5 2z"/><path d="M14.5 2A2.5 2.5 0 0117 4.5v.5a3 3 0 013 3v.5a3 3 0 011 2.5 3 3 0 01-1 2.24V14a3 3 0 01-3 3h-.5a2.5 2.5 0 01-4.5 1.5"/>`,
   book: `<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M12 6v6M9 9h6"/>`,
   speaker: `<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/>`,
   popout: `<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>`,
@@ -123,9 +124,12 @@ export const WIDGETS = {
       </div>`);
   } },
 
-  disk: { title: "Armazenamento", w: 6, md: 6, render: () => card("disk", "SYS.03", "Armazenamento", "disk", gaugeBody("disk", false)) },
+  memory: { title: "O que sei sobre você", w: 6, md: 12, render: () => card("memory", "MEM", "O que sei sobre você", "brain", `
+    <div id="dash-memory-list" class="space-y-1.5"></div>`) },
 
-  actions: { title: "Ações rápidas", w: 6, md: 12, render: () => card("actions", "CMD", "Ações rápidas", "bolt", `
+  disk: { title: "Armazenamento", w: 4, md: 6, render: () => card("disk", "SYS.03", "Armazenamento", "disk", gaugeBody("disk", false)) },
+
+  actions: { title: "Ações rápidas", w: 4, md: 12, render: () => card("actions", "CMD", "Ações rápidas", "bolt", `
     <div class="grid grid-cols-2 gap-2">
       ${PROMPTS.map((p) => `
         <button type="button" class="dash-prompt group text-left p-3 border border-white/5 bg-white/[0.02] hover:border-jarvis-500/40 hover:bg-jarvis-500/5 transition-colors" data-prompt="${p.text}">
@@ -138,7 +142,7 @@ export const WIDGETS = {
         <button type="button" class="dash-prompt px-2.5 py-1 text-[11px] font-mono text-gray-400 border border-white/10 hover:text-jarvis-400 hover:border-jarvis-500/40 transition-colors" data-prompt="${c}">${c}</button>`).join("")}
     </div>`) },
 
-  system: { title: "Sistema", w: 6, md: 6, render: () => card("system", "NET", "Sistema", "server", `
+  system: { title: "Sistema", w: 4, md: 6, render: () => card("system", "NET", "Sistema", "server", `
     <dl class="hud-kv">
       <dt>Host</dt><dd id="dash-hostname">--</dd>
       <dt>SO</dt><dd id="dash-platform">--</dd>
@@ -233,7 +237,69 @@ async function loadTodayReminders() {
   } catch {}
 }
 
+// ----- Memory card -----
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// "time_de_futebol" -> "Time de futebol"
+const humanizeKey = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+async function loadMemories() {
+  const list = document.getElementById("dash-memory-list");
+  if (!list) return;
+  try {
+    const memories = await (await fetch("/api/memories")).json();
+    if (memories.length === 0) {
+      list.innerHTML = `<p class="py-6 text-center text-sm text-gray-500">Converse comigo — vou aprendendo sobre você.</p>`;
+      return;
+    }
+    list.innerHTML = memories.map((m) => `
+      <div class="memory-row group flex items-start gap-3 px-3 py-2 border-l-2 border-jarvis-500/40 bg-white/[0.02] text-xs" data-key="${escapeHtml(m.key)}">
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] font-mono uppercase tracking-wider text-jarvis-400">${escapeHtml(humanizeKey(m.key))}${m.source === "auto" ? ` <span class="text-gray-600 normal-case tracking-normal">· aprendido</span>` : ""}</p>
+          <p class="memory-value text-gray-300 mt-0.5">${escapeHtml(m.value)}</p>
+        </div>
+        <span class="agenda-actions flex items-center gap-1 flex-shrink-0">
+          <button type="button" data-memory="edit" class="p-1 text-gray-500 hover:text-jarvis-400" title="Editar">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+          </button>
+          <button type="button" data-memory="delete" class="p-1 text-gray-500 hover:text-red-400" title="Esquecer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+          </button>
+        </span>
+      </div>`).join("");
+  } catch {}
+}
+
+// Edit / forget (event delegation: works in the dashboard and in pop-out windows)
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-memory]");
+  if (!btn) return;
+  const row = btn.closest(".memory-row");
+  const key = row.dataset.key;
+  try {
+    if (btn.dataset.memory === "delete") {
+      if (!confirm(`Esquecer "${humanizeKey(key)}"?`)) return;
+      await fetch(`/api/memories/${encodeURIComponent(key)}`, { method: "DELETE" });
+    } else {
+      const current = row.querySelector(".memory-value").textContent;
+      const value = prompt(humanizeKey(key), current);
+      if (value === null || !value.trim() || value.trim() === current) return;
+      await fetch(`/api/memories/${encodeURIComponent(key)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: value.trim() }),
+      });
+    }
+    loadMemories();
+  } catch {
+    alert("Não consegui atualizar a memória.");
+  }
+});
+
 export function refreshWidgets() {
+  loadMemories();
   updateClock();
   loadStats();
   loadTodayReminders();
@@ -246,6 +312,9 @@ export function startWidgetTimers() {
   setInterval(loadTodayReminders, 60000);
   // Refresh right away when a reminder is alerted, confirmed or snoozed (reminders.js)
   window.addEventListener("jarvis:reminders-changed", loadTodayReminders);
+  setInterval(loadMemories, 60000);
+  // Learning runs in the background right after a reply: check again a few seconds later
+  window.addEventListener("jarvis:reply-done", () => setTimeout(loadMemories, 5000));
 }
 
 // Run per-widget setup (e.g. the core's canvas) for cards rendered inside `root`
