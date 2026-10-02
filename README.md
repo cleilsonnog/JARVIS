@@ -10,94 +10,112 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 | Camada | Tecnologia |
 |--------|-----------|
 | Backend | Node.js + Express |
-| Frontend | HTML + Tailwind CSS + JS (ES Modules) |
-| LLM | Google Gemini 2.5 Flash (texto + visão) |
+| Frontend | HTML + Tailwind CSS v3 (compilado) + JS (ES Modules) + SortableJS |
+| LLM | Google Gemini 2.5 Flash (texto + visão + function calling) |
+| Voz | Gemini TTS em streaming (voz masculina **Algenib**) + Web Speech API como reserva; reconhecimento de voz pela Web Speech API |
 | Banco | SQLite (better-sqlite3) |
+| Notificações | Web Push (VAPID, `web-push`) |
 | Upload | multer + pdf-parse |
-| Deploy | VPS Contabo + PM2 + Nginx + Let's Encrypt |
-| Mobile | PWA (installável no celular) |
+| Integrações | FinPlan (finanças, somente leitura) |
+| Deploy | VPS Contabo + PM2 (usuário sem root) + Nginx + Let's Encrypt |
+| Mobile | PWA (instalável no celular) |
 
 ## Funcionalidades
 
+### Assistente
 - **Chat com IA** — respostas em streaming via Gemini
-- **Visão (imagens)** — envie fotos e pergunte sobre elas (Gemini Vision)
-- **Câmera ao vivo** — "JARVIS, o que você vê?" liga a câmera e analisa a cena; com a câmera aberta, toda mensagem leva o quadro atual (`/camera` liga/desliga)
-- **Pesquisa na web** — Google Search integrado
-- **Wake word "JARVIS"** — diga "JARVIS" para ativar sem tocar na tela
-- **Comando por voz** — fale com o JARVIS (STT contínuo)
-- **Resposta por voz** — JARVIS fala com animação visual (modo voz-first)
-- **Slash commands** — atalhos rápidos: `/sistema`, `/monitor`, `/lembrete`, etc.
-- **System monitor** — painel ao vivo com CPU, RAM, disco (atualiza a cada 3s)
-- **Dashboard** — relógio, stats do sistema, lembretes do dia na tela inicial
-- **Memória persistente** — JARVIS lembra preferências e fatos entre conversas
-- **Controle do sistema** — executar comandos, abrir apps
-- **Gerenciamento de arquivos** — ler, criar, listar arquivos
-- **Histórico persistente** — conversas salvas em SQLite
-- **Lembretes visuais** — cards flutuantes com minimizar/fechar + voz
-- **Upload de documentos** — PDF, TXT, MD, JS, PY, JSON, CSV + imagens
-- **Drag & drop** — arraste arquivos/imagens direto no chat
-- **5 Temas** — Jarvis, Iron Man, Hulk, Thor, Gold
-- **Background futurista** — grid holográfico, partículas, scan line, cantos HUD
+- **Fé e valores** — o JARVIS sabe que o Cleilson é cristão evangélico: respeita a fé, cita a Bíblia na **NVI** com referência (sem inventar versículos) e não sugere práticas que conflitem com ela
+- **Finanças (FinPlan)** — "quanto está a fatura do Nubank?", "qual meu saldo do mês?", "quanto de limite tenho no Santander?" (somente leitura, ver [Integração FinPlan](#integração-finplan))
+- **Pesquisa na web** — Google Search integrado (perguntas sobre clima, notícias, cotações…)
+- **Visão** — envie fotos ou use a **câmera ao vivo** ("JARVIS, o que você vê?"; `/camera` liga/desliga)
+- **Memória persistente** — lembra preferências e fatos entre conversas
+- **Ferramentas do sistema** — comandos, apps e arquivos (conforme o [`TOOLS_MODE`](#modos-de-ferramentas-tools_mode))
+- **Upload de documentos** — PDF, TXT, MD, JS, PY, JSON, CSV + imagens, com drag & drop
+
+### Voz
+- **Wake word "JARVIS"** — fala natural com pausas (funciona no Android, que corta a escuta a cada pausa)
+- **Voz masculina (Algenib)** — gerada pelo Gemini e tocada em streaming: começa a falar em ~1,5s
+- **Reserva automática** — se a voz do Gemini falhar (limite, rede), usa a voz do navegador
+- **Valores falados corretamente** — "zero reais", "um real", "1810 reais e 35 centavos"
+
+### Lembretes
+- **Notificações push** — chegam no horário mesmo com o app fechado e a tela bloqueada, com botões **Concluir** e **Adiar 10 min**
+- **Estados** — pendente → avisado → concluído (só conclui quando você confirma)
+- **Agenda** — card no dashboard e sininho no topo, agrupados em *Atrasados / Hoje / Amanhã / datas*; o número do sininho conta só atrasados e de hoje
+- **Lembretes perdidos** — ao abrir o app, aparecem como "Lembrete atrasado" até você agir
+
+### Interface
+- **Reator do JARVIS** — núcleo animado (anéis, partículas) que reflete o estado: **Online · Aguardando "JARVIS" · Ouvindo · Processando · Falando**
+  - No dashboard, é o fundo atrás dos cards (arrastável e redimensionável; tocar nele liga o microfone)
+  - Na conversa, fica apagado ao fundo; na tela de fala, aparece inteiro
+  - **Destacável em janela própria** para outro monitor (duplo clique: tela cheia), sincronizado com a janela principal
+- **Dashboard HUD** — cards em vidro: relógio, lembretes, CPU/RAM/disco (gauges + sparklines), **versículo do dia (NVI)** com botão "Ouvir", ações rápidas e sistema
+  - Arrastar pelo cabeçalho, redimensionar pelo canto, minimizar, destacar em janela; "Restaurar layout" volta ao padrão
+- **5 temas** — Jarvis, Iron Man, Hulk, Thor, Gold (o reator segue a cor do tema)
 - **PWA** — instale como app no celular (Android/iOS)
-- **Autenticação** — protegido por senha (cookie de sessão 30 dias)
-- **HTTPS/SSL** — certificado Let's Encrypt com renovação automática
+
+### Segurança
+- **Login por senha** com sessões persistentes (sobrevivem a deploys), tokens guardados só como hash, cookie `Secure` atrás do HTTPS
+- **Limite de tentativas** — 5 senhas erradas por IP a cada 15 min
+- **Modo seguro no servidor** — sem terminal nem apps; arquivos só numa pasta isolada
+- **App roda sem root** na VPS
 
 ## Como rodar
 
 ### Local (desenvolvimento)
 
 ```bash
-# Instalar dependências
 npm install
-
-# Configurar .env
-GEMINI_API_KEY=sua_chave_aqui
-PORT=3000
-TOOLS_MODE=full   # libera terminal, apps e todo o sistema de arquivos (só na sua máquina!)
-
-# Iniciar
-npm start
-
-# Ou em modo dev (auto-reload)
-npm run dev
+npm run dev     # compila o CSS, recompila ao editar e reinicia o servidor ao mudar o backend
 ```
 
-Acesse: **http://localhost:3000**
+Acesse: **http://localhost:3000**. Mudanças no `.env` exigem reiniciar o `npm run dev`.
 
-### VPS (produção)
+### Variáveis de ambiente (`.env`)
 
-```bash
-# Configurar .env
-GEMINI_API_KEY=sua_chave_aqui
-JARVIS_PASSWORD=sua_senha_segura
-PORT=3000
-NODE_ENV=production
-TOOLS_MODE=safe   # padrão: sem terminal/apps, arquivos só em ~/jarvis-files
-```
+| Variável | Obrigatória | Descrição |
+|----------|-------------|-----------|
+| `GEMINI_API_KEY` | sim | Chave do Gemini (chat, visão e voz) |
+| `PORT` | não | Porta (padrão 3000) |
+| `JARVIS_PASSWORD` | produção | Ativa o login; sem ela o acesso é livre (uso local) |
+| `TOOLS_MODE` | não | `full` (PC local) ou `safe` (padrão) |
+| `JARVIS_FILES_DIR` | não | Pasta acessível no modo `safe` (padrão `~/jarvis-files`) |
+| `FINPLAN_URL` / `FINPLAN_API_TOKEN` | não | Ativam a consulta de finanças |
+| `TTS_PROVIDER` | não | `browser` desliga a voz do Gemini |
+| `TTS_VOICE` / `TTS_MODEL` | não | Voz (padrão `Algenib`) e modelo (padrão `gemini-3.1-flash-tts-preview`) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | não | Chaves do push; se ausentes, são geradas uma vez e guardadas no banco |
+| `JARVIS_DB` | não | Caminho de outro banco SQLite (útil para testes) |
 
 ### Modos de ferramentas (`TOOLS_MODE`)
 
 | Modo | Onde usar | O que o JARVIS pode fazer |
 |------|-----------|---------------------------|
 | `full` | PC local | Executar comandos, abrir apps, ler/escrever qualquer arquivo |
-| `safe` (padrão) | Servidor na internet | Sem terminal nem apps; ler/escrever/listar só dentro de `JARVIS_FILES_DIR` (padrão `~/jarvis-files`) |
+| `safe` (padrão) | Servidor na internet | Sem terminal nem apps; ler/escrever/listar só dentro de `JARVIS_FILES_DIR` |
 
 Se a variável não estiver definida, vale `safe`: um servidor mal configurado nunca fica aberto.
 
-Veja o guia completo em [DEPLOY.md](DEPLOY.md).
+### Deploy
 
-## Autenticação
+```bash
+git push
+./scripts/deploy.sh
+```
 
-A autenticação é ativada quando `JARVIS_PASSWORD` está definido no `.env`:
+O script confere se tudo foi commitado e enviado; na VPS faz pull, instala dependências (se mudaram), compila o CSS, reinicia e testa se o site respondeu. Detalhes e organização da VPS em [DEPLOY.md](DEPLOY.md).
 
-- **Com senha:** todas as rotas são protegidas, redireciona para tela de login
-- **Sem senha:** acesso livre (ideal para uso local)
-- **Sessão:** cookie httpOnly com validade de 30 dias
-- **API:** retorna 401 para requisições não autenticadas
+## Integração FinPlan
+
+O JARVIS consulta o [FinPlan](https://finplanai.nogueiradev.com) (app de finanças do Cleilson) por uma rota **somente leitura**:
+
+- **FinPlan:** `GET /api/integrations/jarvis` — protegida por `Authorization: Bearer <JARVIS_INTEGRATION_TOKEN>` e presa a um usuário (`JARVIS_INTEGRATION_USER_ID`); limite de requisições; responde 404 se não estiver configurada. Não grava nada no banco.
+- **JARVIS:** ferramenta `consultar_financas`, ativa quando `FINPLAN_URL` e `FINPLAN_API_TOKEN` estão definidos (o token é o mesmo nos dois apps).
+- **Dados:** saldo do mês (receitas − despesas − investimentos), totais do mês, cartões com fatura do mês e do próximo (valor, status, fechamento, vencimento), limite disponível e últimas transações.
+- **Privacidade:** os valores consultados passam pelo Gemini para montar a resposta.
 
 ## Slash Commands
 
-Digite `/` no chat para ver o autocomplete. Comandos disponíveis:
+Digite `/` no chat para ver o autocomplete.
 
 | Comando | Descrição |
 |---------|-----------|
@@ -114,41 +132,25 @@ Digite `/` no chat para ver o autocomplete. Comandos disponíveis:
 
 ## Comandos por Voz
 
-### Wake Word
-1. Clique no mic uma vez para ativar a escuta
-2. Diga **"JARVIS"** seguido do comando: _"JARVIS, que horas são?"_
+1. Toque no microfone (ou no reator do dashboard) para ativar a escuta
+2. Diga **"JARVIS"** seguido do comando: _"JARVIS, quanto está a fatura do Nubank?"_
 3. Ou diga **"JARVIS"** sozinho e fale o comando em seguida
-4. Após responder, o JARVIS volta a ouvir automaticamente
-5. Clique no mic novamente para desativar
+4. Pode fazer pausas: o comando é enviado após ~2s de silêncio
+5. Enquanto o JARVIS responde o microfone fica desligado; depois ele volta a ouvir sozinho
+6. Toque no microfone novamente para desativar
 
-### Indicadores do Microfone
-| Cor | Estado |
-|-----|--------|
-| Verde pulsando | Ouvindo, esperando wake word "JARVIS" |
-| Vermelho | Capturando seu comando |
-| Cinza | Desativado |
-
-## Interface
-
-- **Logo JARVIS** no header — volta para o dashboard
-- **Sidebar** — escondida por padrão, abre pelo menu hamburger
-- **Dashboard HUD** — cards arrastáveis pelo cabeçalho (relógio, CPU/RAM/Disco com gauges e sparklines, lembretes, ações rápidas, sistema); redimensionáveis pelo canto inferior direito, minimizáveis e destacáveis em janela própria (pra levar a outro monitor); layout salvo no navegador, "Restaurar layout" volta ao padrão
-- **Modo voz-first** — animação visual enquanto fala (botão "Ver texto" para ver a resposta)
-- **Cards de lembrete** — cards flutuantes com minimizar/fechar
-- **System monitor** — `/monitor` abre painel ao vivo que atualiza a cada 3s
-- **Autocomplete** — ao digitar `/`, mostra sugestões de comandos
-- **PWA** — instalável como app nativo no celular
+| Microfone | Reator | Estado |
+|-----------|--------|--------|
+| Verde pulsando | Aguardando "JARVIS" | Esperando a palavra de ativação |
+| Vermelho | Ouvindo | Capturando seu comando |
+| — | Processando / Falando | Gerando e lendo a resposta |
+| Cinza | Online | Desativado |
 
 ## Atalhos
 
-- **Enter** — enviar mensagem
-- **Shift+Enter** — nova linha
-- **Escape** — fecha autocomplete
-- **Microfone** — ativar/desativar wake word
-- **Clip** — enviar documento/imagem
-- **Drag & drop** — arrastar arquivo na área do chat
-- **Alto-falante** — ligar/desligar voz
-- **Sol** — trocar tema
+- **Enter** — enviar mensagem · **Shift+Enter** — nova linha · **Escape** — fecha autocomplete/painéis
+- **Microfone** — ativar/desativar wake word · **Câmera** — visão ao vivo · **Clip** — enviar documento/imagem
+- **Sininho** — agenda de lembretes · **Alto-falante** — ligar/desligar voz · **Sol** — trocar tema
 - **Logo JARVIS** — nova conversa (dashboard)
 
 ## Estrutura do Projeto
@@ -157,38 +159,44 @@ Digite `/` no chat para ver o autocomplete. Comandos disponíveis:
 JARVIS/
 ├── server.js                # Entry point + auth middleware
 ├── src/
-│   ├── auth.js              # Autenticação (login, sessão, cookie)
-│   ├── database.js          # SQLite: tabelas + prepared statements + memories
-│   ├── tools.js             # Ferramentas do sistema + memória persistente
-│   └── routes.js            # Rotas da API + Gemini + system stats
+│   ├── auth.js              # Login, sessões persistentes (hash), limite de tentativas
+│   ├── database.js          # SQLite: tabelas, migrações e prepared statements
+│   ├── routes.js            # Rotas da API + Gemini (chat, ferramentas, pesquisa) + system prompt
+│   ├── tools.js             # Ferramentas do Gemini (sistema, arquivos, lembretes, memória, finanças)
+│   ├── push.js              # Web Push + agendador de lembretes
+│   ├── tts.js               # Voz do servidor (Gemini TTS em streaming)
+│   └── finplan.js           # Cliente da integração FinPlan
 ├── scripts/deploy.sh        # Deploy na VPS via git (pull + build + restart + health check)
 ├── styles/tailwind.css      # Entrada do Tailwind (gera public/tailwind.css)
 ├── tailwind.config.js       # Config do Tailwind (cores, animações)
 ├── public/
-│   ├── index.html           # Interface principal (Tailwind + background HUD)
-│   ├── widget.html          # Card do dashboard destacado em janela própria
+│   ├── index.html           # Interface principal
+│   ├── widget.html          # Card ou reator destacado em janela própria
 │   ├── login.html           # Tela de login
-│   ├── app.js               # Entry point frontend + submit + slash commands
-│   ├── style.css            # Estilos: markdown, animações, background, mobile
-│   ├── sw.js                # Service Worker (PWA offline cache)
-│   ├── manifest.json        # PWA manifest (instalar como app)
-│   ├── icons/               # Ícones PWA (SVG)
+│   ├── app.js               # Entry point frontend: envio de mensagens, streaming, autocomplete
+│   ├── style.css            # Estilos: HUD, reator, agenda, câmera, markdown, mobile
+│   ├── sw.js                # Service Worker (cache offline + push notifications)
+│   ├── manifest.json        # PWA manifest
+│   ├── icons/               # Ícones PWA (SVG) e das notificações (PNG)
 │   └── js/
-│       ├── tts.js           # Text-to-Speech (Web Speech API)
-│       ├── stt.js           # Speech-to-Text + wake word "JARVIS"
+│       ├── core.js          # Reator do JARVIS (fundo, conversa, janela destacada)
+│       ├── tts.js           # Fala: voz do servidor + reserva do navegador
+│       ├── stt.js           # Reconhecimento de voz + wake word "JARVIS"
 │       ├── chat.js          # UI do chat (mensagens, typing indicator)
-│       ├── sidebar.js       # Sidebar, conversas, welcome screen
+│       ├── sidebar.js       # Sidebar e conversas
 │       ├── upload.js        # Upload de documentos + imagens + drag & drop
-│       ├── camera.js        # Câmera ao vivo: prévia, captura e detecção de "o que você vê?"
-│       ├── commands.js      # Slash commands (/sistema, /monitor, etc.)
-│       ├── dashboard.js     # Dashboard: layout, arrastar, redimensionar, minimizar, destacar
+│       ├── camera.js        # Câmera ao vivo e detecção de "o que você vê?"
+│       ├── commands.js      # Slash commands
+│       ├── dashboard.js     # Layout do dashboard: arrastar, redimensionar, minimizar, destacar
 │       ├── widgets.js       # Cards do dashboard (markup + dados ao vivo)
 │       ├── widget-page.js   # Página da janela destacada
-│       ├── theme.js         # Sistema de 5 temas + cores dinâmicas
-│       └── reminders.js     # Polling de lembretes + cards visuais
-├── jarvis.db                # Banco SQLite (criado automaticamente)
-├── .env                     # Chaves de API + senha
-├── DEPLOY.md                # Guia de deploy na VPS
+│       ├── agenda.js        # Agenda de lembretes (card + painel do sininho)
+│       ├── reminders.js     # Push, cards de lembrete e sininho
+│       ├── verses.js        # Versículos do dia (NVI)
+│       └── theme.js         # 5 temas + cores dinâmicas
+├── jarvis.db                # Banco SQLite (criado automaticamente, fora do git)
+├── .env                     # Chaves e configurações (fora do git)
+├── DEPLOY.md                # Guia de deploy e organização da VPS
 └── package.json
 ```
 
@@ -212,6 +220,7 @@ JARVIS/
    ```js
    import "./js/meu-modulo.js";
    ```
+5. Adicione o arquivo à lista `STATIC_ASSETS` em `public/sw.js` e incremente `CACHE_NAME`
 
 ### Backend (src/)
 
@@ -228,7 +237,15 @@ JARVIS/
    ```js
    const { minhaFuncao } = require("./meu-modulo");
    ```
-4. Para novas rotas, adicione dentro da função `register(app)` em `src/routes.js`, ou crie um novo arquivo de rotas e registre em `server.js`.
+4. Para novas rotas, adicione dentro da função `register(app)` em `src/routes.js`, ou crie um módulo com seu próprio `register(app)` (como `src/tts.js`) e chame-o de lá.
+
+### Adicionando um novo card no dashboard
+
+Em `public/js/widgets.js`, adicione ao objeto `WIDGETS` e inclua o id em `DEFAULT_ORDER`:
+```js
+meucard: { title: "Meu card", w: 4, md: 6, render: () => card("meucard", "X-01", "Meu card", "bolt", `<p>conteúdo</p>`) },
+```
+`w` é a largura em colunas (de 12) no desktop; `md`, no tablet. Para lógica após renderizar, use `mount: (el) => { ... }`.
 
 ### Adicionando um novo slash command
 
