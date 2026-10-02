@@ -2,6 +2,7 @@
 import { speak, stopSpeaking, setOnSpeakStart, setOnSpeakEnd } from "./js/tts.js";
 import { createMessageEl, hideWelcome, showTyping, hideTyping, scrollToBottom } from "./js/chat.js";
 import { getSessionId, loadConversations, startNewChat } from "./js/sidebar.js";
+import { markBriefingHeard } from "./js/dashboard.js";
 import { getPendingFile, clearPendingFile } from "./js/upload.js";
 import { handleSlashCommand, getCommandSuggestions } from "./js/commands.js";
 import { isCameraOn, cameraIntent, captureFrame, closeCamera } from "./js/camera.js";
@@ -133,6 +134,7 @@ form.addEventListener("submit", async (e) => {
   }
 
   let imageData = null;
+  if (/bom dia|briefing|resumo d[oe] (meu )?dia/i.test(message)) markBriefingHeard();
 
   // Camera: "fecha a câmera" is handled locally; with the camera on (or "o que você vê?") send a frame
   if (!pendingFile) {

@@ -4,6 +4,7 @@ const fs = require("fs");
 const os = require("os");
 const { stmts } = require("./database");
 const finplan = require("./finplan");
+const { getBriefing } = require("./briefing");
 
 const functionDeclarations = [
   {
@@ -122,6 +123,15 @@ const SAFE_DISABLED = new Set(["execute_command", "open_application"]);
 
 if (TOOLS_MODE === "safe") fs.mkdirSync(FILES_ROOT, { recursive: true });
 
+functionDeclarations.push({
+  name: "briefing_do_dia",
+  description:
+    "Resumo do dia do usuário em uma chamada: data/hora, clima da cidade dele (agora e previsão de hoje), " +
+    "lembretes atrasados / de hoje / próximos, saldo do mês e faturas vencendo em 7 dias (FinPlan) e o versículo do dia (NVI). " +
+    "Use quando ele disser bom dia, pedir o briefing, o resumo do dia ou 'como está meu dia'.",
+  parameters: { type: "OBJECT", properties: {} },
+});
+
 // Read-only finance tool, offered only when the FinPlan integration is configured
 if (finplan.isConfigured()) {
   functionDeclarations.push({
@@ -218,6 +228,8 @@ function executeToolCall(name, args) {
         const dir = resolvePath(args.directory || ".");
         return { output: listDir(dir).slice(0, 5000) };
       }
+      case "briefing_do_dia":
+        return getBriefing().catch((err) => ({ error: err.message }));
       case "consultar_financas":
         // Async: the caller awaits it; errors become a tool error instead of a rejection
         return finplan.getFinancialSummary(args.mes).catch((err) => ({ error: err.message }));

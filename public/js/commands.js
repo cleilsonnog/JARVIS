@@ -24,6 +24,11 @@ const COMMANDS = {
     description: "Cria lembrete — /lembrete 18:30 Reunião",
     handler: cmdLembrete,
   },
+  "/briefing": {
+    description: "Briefing do dia: clima, lembretes, finanças e versículo",
+    handler: null,
+    forward: "Bom dia, JARVIS! Qual o briefing de hoje?",
+  },
   "/clima": {
     description: "Mostra o clima atual (via IA)",
     handler: null, // Handled by forwarding to AI

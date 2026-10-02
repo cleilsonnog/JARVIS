@@ -34,6 +34,21 @@ function getSavedOrder() {
   return order;
 }
 
+// ----- Morning briefing button (pulses until heard today) -----
+const BRIEFING_PROMPT = "Bom dia, JARVIS! Qual o briefing de hoje?";
+const BRIEFING_KEY = "jarvis-briefing-day";
+const todayKey = () => new Date().toLocaleDateString("sv-SE");
+
+function briefingHeardToday() {
+  try { return localStorage.getItem(BRIEFING_KEY) === todayKey(); } catch { return false; }
+}
+
+// Asked by button, voice ("bom dia") or /briefing: stop pulsing for today
+export function markBriefingHeard() {
+  try { localStorage.setItem(BRIEFING_KEY, todayKey()); } catch {}
+  document.getElementById("dash-briefing")?.classList.remove("briefing-new");
+}
+
 // ----- Render -----
 function greeting() {
   const h = new Date().getHours();
@@ -55,10 +70,16 @@ export function renderDashboard() {
             </p>
           </div>
         </div>
+        <div class="flex items-center gap-2">
+        <button type="button" id="dash-briefing" class="dash-prompt ${briefingHeardToday() ? "" : "briefing-new"} flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-jarvis-400 border border-jarvis-500/40 hover:bg-jarvis-500/10 transition-colors" data-prompt="${BRIEFING_PROMPT}" title="Clima, lembretes, finanças e versículo do dia">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Briefing do dia
+        </button>
         <button type="button" id="dash-reset" class="flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-gray-500 border border-white/10 hover:text-jarvis-400 hover:border-jarvis-500/40 transition-colors" title="Volta ordem, tamanhos e cards minimizados ao padrão">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           Restaurar layout
         </button>
+        </div>
       </div>
       <div id="dash-grid" class="grid grid-cols-12 gap-4 grid-flow-dense">
         ${getSavedOrder().map((id) => WIDGETS[id].render()).join("")}

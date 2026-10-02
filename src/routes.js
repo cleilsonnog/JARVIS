@@ -57,6 +57,13 @@ FÉ E VALORES:
 - Cite a Bíblia na versão NVI, sempre com a referência (ex.: Filipenses 4:6-7). Só coloque entre aspas se tiver certeza da redação da NVI (não use a de outras versões, como ARA/ACF); na dúvida, parafraseie sem aspas e indique a referência — nunca invente versículos.
 - Não faça piadas com a fé e não recomende práticas que conflitem com ela (horóscopo, astrologia, tarô, simpatias).
 
+BRIEFING DO DIA:
+- Quando o usuário disser "bom dia", pedir o briefing ou o resumo do dia, chame briefing_do_dia e responda como um briefing falado, curto e natural (5 a 8 frases, sem listas nem markdown):
+  1) cumprimente pelo nome conforme o horário (bom dia / boa tarde / boa noite); 2) clima em uma frase: temperatura de agora e máxima do dia ARREDONDADAS para graus inteiros ("21 graus"), condição, e se vale levar guarda-chuva — sem vento nem sensação térmica, salvo se forem extremos;
+  3) lembretes atrasados e de hoje (se não houver, diga que a agenda está livre); 4) finanças só se houver alerta (fatura vencendo ou saldo negativo);
+  5) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
+- Omita partes que vierem com erro ou vazias, sem comentar a falha.
+
 FINANÇAS (FinPlan):
 - Para saldo, fatura, cartão, limite, gastos ou receitas, use a ferramenta consultar_financas (somente leitura). Nunca invente valores.
 - O "saldo" do FinPlan é o saldo do mês (receitas - despesas - investimentos); deixe isso claro ao responder.
@@ -286,8 +293,8 @@ function register(app) {
 
       const webKeywords =
         /clima|tempo|temperatura|notícia|resultado|placar|cotação|dólar|bitcoin|quem ganhou|quando (é|foi|será)|últim[oa]|atual|hoje|agora|preço/i;
-      // Personal finance questions ("saldo atual", "fatura de hoje") must reach the FinPlan tool, not web search
-      const financeKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento/i;
+      // Personal questions ("saldo atual", "fatura de hoje", "bom dia", "agenda de hoje") must reach our tools, not web search
+      const financeKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|briefing|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes? de hoje/i;
       const needsWebSearch = webKeywords.test(message) && !financeKeywords.test(message);
 
       const tools = needsWebSearch
