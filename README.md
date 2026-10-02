@@ -28,7 +28,8 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 - **Finanças (FinPlan)** — "quanto está a fatura do Nubank?", "qual meu saldo do mês?", "quanto de limite tenho no Santander?" (somente leitura, ver [Integração FinPlan](#integração-finplan))
 - **Pesquisa na web** — Google Search integrado (perguntas sobre clima, notícias, cotações…)
 - **Visão** — envie fotos ou use a **câmera ao vivo** ("JARVIS, o que você vê?"; `/camera` liga/desliga)
-- **Memória persistente** — lembra preferências e fatos entre conversas
+- **Briefing "Bom dia, JARVIS"** — clima da cidade, lembretes atrasados e de hoje, alertas do FinPlan e versículo do dia num resumo falado (botão "Briefing do dia", `/briefing` ou só "bom dia")
+- **Memória que aprende sozinha** — depois de cada resposta, guarda em segundo plano fatos duradouros sobre você (pessoas, igreja, preferências, projetos); "esquece…" apaga; card "O que sei sobre você" para editar ou apagar
 - **Ferramentas do sistema** — comandos, apps e arquivos (conforme o [`TOOLS_MODE`](#modos-de-ferramentas-tools_mode))
 - **Upload de documentos** — PDF, TXT, MD, JS, PY, JSON, CSV + imagens, com drag & drop
 
@@ -49,7 +50,7 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
   - No dashboard, é o fundo atrás dos cards (arrastável e redimensionável; tocar nele liga o microfone)
   - Na conversa, fica apagado ao fundo; na tela de fala, aparece inteiro
   - **Destacável em janela própria** para outro monitor (duplo clique: tela cheia), sincronizado com a janela principal
-- **Dashboard HUD** — cards em vidro: relógio, lembretes, CPU/RAM/disco (gauges + sparklines), **versículo do dia (NVI)** com botão "Ouvir", ações rápidas e sistema
+- **Dashboard HUD** — cards em vidro: relógio, lembretes, CPU/RAM/disco (gauges + sparklines), **versículo do dia (NVI)** com botão "Ouvir", **o que o JARVIS sabe sobre você**, ações rápidas e sistema
   - Arrastar pelo cabeçalho, redimensionar pelo canto, minimizar, destacar em janela; "Restaurar layout" volta ao padrão
 - **5 temas** — Jarvis, Iron Man, Hulk, Thor, Gold (o reator segue a cor do tema)
 - **PWA** — instale como app no celular (Android/iOS)
@@ -80,6 +81,8 @@ Acesse: **http://localhost:3000**. Mudanças no `.env` exigem reiniciar o `npm r
 | `JARVIS_PASSWORD` | produção | Ativa o login; sem ela o acesso é livre (uso local) |
 | `TOOLS_MODE` | não | `full` (PC local) ou `safe` (padrão) |
 | `JARVIS_FILES_DIR` | não | Pasta acessível no modo `safe` (padrão `~/jarvis-files`) |
+| `JARVIS_CITY` | não | Cidade do clima do briefing (ex.: `São Pedro da Aldeia, RJ`; via Open-Meteo, sem chave) |
+| `MEMORY_LEARNING` | não | `off` desliga o aprendizado automático de memórias |
 | `FINPLAN_URL` / `FINPLAN_API_TOKEN` | não | Ativam a consulta de finanças |
 | `TTS_PROVIDER` | não | `browser` desliga a voz do Gemini |
 | `TTS_VOICE` / `TTS_MODEL` | não | Voz (padrão `Algenib`) e modelo (padrão `gemini-3.1-flash-tts-preview`) |
@@ -124,6 +127,7 @@ Digite `/` no chat para ver o autocomplete.
 | `/monitor` | Abre/fecha o monitor ao vivo (CPU, RAM, disco) |
 | `/lembretes` | Lista lembretes de hoje |
 | `/lembrete HH:MM texto` | Cria um lembrete rápido |
+| `/briefing` | Briefing do dia (clima, lembretes, finanças, versículo) |
 | `/clima` | Mostra o clima atual (via IA) |
 | `/ip` | Mostra seu IP público |
 | `/memorias` | Lista memórias salvas do JARVIS |
@@ -165,7 +169,11 @@ JARVIS/
 │   ├── tools.js             # Ferramentas do Gemini (sistema, arquivos, lembretes, memória, finanças)
 │   ├── push.js              # Web Push + agendador de lembretes
 │   ├── tts.js               # Voz do servidor (Gemini TTS em streaming)
-│   └── finplan.js           # Cliente da integração FinPlan
+│   ├── finplan.js           # Cliente da integração FinPlan
+│   ├── briefing.js          # Briefing do dia (agrega clima, lembretes, finanças, versículo)
+│   ├── weather.js           # Clima via Open-Meteo
+│   ├── verses.js            # Versículo do dia no servidor (mesma lista do navegador)
+│   └── memory.js            # Aprendizado automático de memórias
 ├── scripts/deploy.sh        # Deploy na VPS via git (pull + build + restart + health check)
 ├── styles/tailwind.css      # Entrada do Tailwind (gera public/tailwind.css)
 ├── tailwind.config.js       # Config do Tailwind (cores, animações)
@@ -178,6 +186,7 @@ JARVIS/
 │   ├── sw.js                # Service Worker (cache offline + push notifications)
 │   ├── manifest.json        # PWA manifest
 │   ├── icons/               # Ícones PWA (SVG) e das notificações (PNG)
+│   ├── data/verses.json     # Lista de versículos NVI (navegador + servidor)
 │   └── js/
 │       ├── core.js          # Reator do JARVIS (fundo, conversa, janela destacada)
 │       ├── tts.js           # Fala: voz do servidor + reserva do navegador
@@ -192,7 +201,7 @@ JARVIS/
 │       ├── widget-page.js   # Página da janela destacada
 │       ├── agenda.js        # Agenda de lembretes (card + painel do sininho)
 │       ├── reminders.js     # Push, cards de lembrete e sininho
-│       ├── verses.js        # Versículos do dia (NVI)
+│       ├── verses.js        # Versículo do dia (lê public/data/verses.json)
 │       └── theme.js         # 5 temas + cores dinâmicas
 ├── jarvis.db                # Banco SQLite (criado automaticamente, fora do git)
 ├── .env                     # Chaves e configurações (fora do git)
