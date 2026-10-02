@@ -7,6 +7,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { db, stmts } = require("./database");
 const { functionDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT } = require("./tools");
 const push = require("./push");
+const tts = require("./tts");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -82,6 +83,7 @@ function getSystemPrompt() {
 
 function register(app) {
   push.startReminderScheduler();
+  tts.register(app);
 
   // Conversas
   app.get("/api/conversations", (req, res) => {
