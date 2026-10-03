@@ -5,6 +5,7 @@ const os = require("os");
 const { stmts } = require("./database");
 const finplan = require("./finplan");
 const { getBriefing } = require("./briefing");
+const strava = require("./strava");
 
 const functionDeclarations = [
   {
@@ -132,6 +133,24 @@ functionDeclarations.push({
   parameters: { type: "OBJECT", properties: {} },
 });
 
+// Read-only workouts tool (Strava, fed by the Amazfit watch), offered when Strava is configured
+if (strava.isConfigured()) {
+  functionDeclarations.push({
+    name: "consultar_atividades",
+    description:
+      "Consulta (somente leitura) as atividades físicas do usuário no Strava (sincronizadas do relógio Amazfit Balance): " +
+      "totais por tipo (quantidade, km, tempo) e as atividades recentes com distância, tempo, ritmo, velocidade, FC média/máxima e elevação. " +
+      "Use para perguntas sobre treinos, corridas, caminhadas, pedais, quanto correu/andou, último treino, ritmo ou evolução.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        dias: { type: "INTEGER", description: "Período em dias até hoje (1 = hoje, 7 = semana, 30 = mês). Padrão 7." },
+        tipo: { type: "STRING", description: "Filtrar por tipo: corrida, caminhada, pedal, musculação, natação..." },
+      },
+    },
+  });
+}
+
 // Read-only finance tool, offered only when the FinPlan integration is configured
 if (finplan.isConfigured()) {
   functionDeclarations.push({
@@ -228,6 +247,8 @@ function executeToolCall(name, args) {
         const dir = resolvePath(args.directory || ".");
         return { output: listDir(dir).slice(0, 5000) };
       }
+      case "consultar_atividades":
+        return strava.getActivities(args).catch((err) => ({ error: err.message }));
       case "briefing_do_dia":
         return getBriefing().catch((err) => ({ error: err.message }));
       case "consultar_financas":

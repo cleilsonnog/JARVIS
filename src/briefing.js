@@ -3,6 +3,7 @@ const { stmts } = require("./database");
 const { getWeather } = require("./weather");
 const { verseOfTheDay } = require("./verses");
 const finplan = require("./finplan");
+const strava = require("./strava");
 
 const TZ = "America/Sao_Paulo";
 const DUE_SOON_DAYS = 7;
@@ -40,12 +41,19 @@ async function financesBlock() {
 
 async function getBriefing() {
   const now = new Date();
-  const [weather, finances] = await Promise.allSettled([getWeather(), financesBlock()]);
+  const [weather, finances, activities] = await Promise.allSettled([
+    getWeather(),
+    financesBlock(),
+    strava.isConfigured() && strava.isConnected() ? strava.getActivities({ dias: 7 }) : null,
+  ]);
   return {
     agora: now.toLocaleString("pt-BR", { timeZone: TZ, dateStyle: "full", timeStyle: "short" }),
     clima: weather.status === "fulfilled" ? weather.value : { erro: "clima indisponível" },
     lembretes: remindersBlock(),
     financas: finances.status === "fulfilled" ? finances.value : { erro: "FinPlan indisponível" },
+    atividades_7_dias: activities.status === "fulfilled" && activities.value
+      ? { total: activities.value.total_atividades, por_tipo: activities.value.totais_por_tipo, ultima: activities.value.atividades[0] || null }
+      : null,
     versiculo_do_dia: { ...verseOfTheDay(now), versao: "NVI" },
   };
 }

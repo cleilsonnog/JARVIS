@@ -57,6 +57,9 @@ function authMiddleware(req, res, next) {
   // Login route is always accessible
   if (req.path === "/login" || req.path === "/api/login") return next();
 
+  // Strava OAuth return: cross-site navigation (SameSite=Strict cookie not sent); validated by its one-time state
+  if (req.path === "/api/strava/callback") return next();
+
   // Allow login page and PWA assets
   // sw.js must stay public: if it redirected to login, a logged-out browser could never update a stale worker
   if (req.path === "/login.html" || req.path === "/tailwind.css" || req.path === "/sw.js" || req.path === "/manifest.json" || req.path.startsWith("/icons/")) return next();

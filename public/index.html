@@ -69,6 +69,16 @@
       <!-- Conversation list -->
       <div id="conversation-list" class="flex-1 overflow-y-auto p-2 space-y-1">
       </div>
+      <!-- Integrations (js/integrations.js) -->
+      <div id="integrations" class="p-3 border-t border-white/5">
+        <p class="text-[10px] font-mono uppercase tracking-wider text-gray-500 mb-2">Integrações</p>
+        <div class="flex items-center gap-2 text-xs">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fc4c02" aria-hidden="true"><path d="M15.39 17.94l-2.09-4.12h-3.07l5.16 10.18 5.15-10.18h-3.07M10.34 0L3.37 13.82h4.1l2.87-5.66 2.86 5.66h4.1z"/></svg>
+          <span class="text-gray-300">Strava</span>
+          <span id="strava-status" class="flex-1 truncate text-[11px] text-gray-500">…</span>
+          <button type="button" id="strava-action" class="hidden px-2 py-1 text-[11px] border border-white/10 text-gray-300 hover:text-jarvis-400 hover:border-jarvis-500/40 transition-colors"></button>
+        </div>
+      </div>
     </aside>
 
     <!-- Main area -->

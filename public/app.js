@@ -7,6 +7,7 @@ import { getPendingFile, clearPendingFile } from "./js/upload.js";
 import { handleSlashCommand, getCommandSuggestions } from "./js/commands.js";
 import { isCameraOn, cameraIntent, captureFrame, closeCamera } from "./js/camera.js";
 import "./js/stt.js";
+import "./js/integrations.js";
 import "./js/theme.js";
 import "./js/reminders.js";
 import "./js/dashboard.js";
