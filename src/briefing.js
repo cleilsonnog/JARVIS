@@ -5,11 +5,12 @@ const { getWeather, findPlace } = require("./weather");
 const { verseOfTheDay } = require("./verses");
 const finplan = require("./finplan");
 const strava = require("./strava");
+const email = require("./email");
 
 const TZ = "America/Sao_Paulo";
 const DUE_SOON_DAYS = 7;
 const CONFIG_KEY = "briefing_config";
-const SECTIONS = ["clima", "lembretes", "financas", "treinos", "versiculo"];
+const SECTIONS = ["clima", "lembretes", "financas", "treinos", "emails", "versiculo"];
 const LENGTHS = ["curto", "normal", "detalhado"];
 const REFRESH_MIN = [5, 15, 30, 60];
 
@@ -99,16 +100,23 @@ function agendaWeek() {
     .map((r) => ({ id: r.id, texto: r.text, quando: r.remind_at, atrasado: !!r.notified || r.remind_at < now }));
 }
 
+async function emailsBlock() {
+  if (!email.hasAccounts()) return null;
+  const contas = await email.getUnreadSummary();
+  return contas.map((c) => (c.erro ? { conta: c.conta, erro: c.erro } : { conta: c.conta, nao_lidos: c.nao_lidos, recentes: c.recentes.slice(0, 6) }));
+}
+
 const skip = () => Promise.resolve(undefined);
 
 async function getBriefing() {
   const cfg = getConfig();
   const on = cfg.secoes;
   const now = new Date();
-  const [weather, finances, activities] = await Promise.allSettled([
+  const [weather, finances, activities, emails] = await Promise.allSettled([
     on.clima ? getWeather(cfg.cidade) : skip(),
     on.financas ? financesBlock() : skip(),
     on.treinos ? activitiesBlock() : skip(),
+    on.emails ? emailsBlock() : skip(),
   ]);
   const value = (r, fallback) => (r.status === "fulfilled" ? r.value : fallback);
 
@@ -120,6 +128,7 @@ async function getBriefing() {
     lembretes: on.lembretes ? remindersBlock() : undefined,
     financas: on.financas ? value(finances, { erro: "FinPlan indisponível" }) : undefined,
     atividades_7_dias: on.treinos ? value(activities, null) : undefined,
+    emails: on.emails ? value(emails, null) : undefined,
     versiculo_do_dia: on.versiculo ? { ...verseOfTheDay(now), versao: "NVI" } : undefined,
   };
 }

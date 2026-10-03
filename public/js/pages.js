@@ -84,6 +84,9 @@ const ICONS = {
   pin: `<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>`,
   mic: `<rect x="9" y="1" width="6" height="11" rx="3"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 19v4"/>`,
   back: `<path d="M19 12H5M12 19l-7-7 7-7"/>`,
+  emails: `<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>`,
+  trash: `<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>`,
+  plus: `<path d="M12 5v14M5 12h14"/>`,
 };
 const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
@@ -93,6 +96,7 @@ const SECTIONS = [
   { id: "lembretes", label: "Agenda" },
   { id: "financas", label: "Finanças" },
   { id: "treinos", label: "Treinos" },
+  { id: "emails", label: "E-mails" },
   { id: "versiculo", label: "Versículo" },
 ];
 
@@ -161,14 +165,24 @@ function renderBriefing() {
         </div>
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-3 mt-4">
-        <section class="panel lg:col-span-2" id="bf-week">
+      <div class="grid gap-4 lg:grid-cols-2 mt-4">
+        <section class="panel" id="bf-week">
           <p class="page-kicker">Próximos 7 dias</p>
           <h3 class="text-base font-semibold text-gray-100 mt-1">Agenda consolidada</h3>
           <div class="bf-week-list mt-3">${skeleton}</div>
         </section>
-        <section class="panel" id="bf-verse">${skeleton}</section>
+        <section class="panel" id="bf-inbox">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <p class="page-kicker">Últimas 24 horas</p>
+              <h3 class="text-base font-semibold text-gray-100 mt-1">Caixa de entrada</h3>
+            </div>
+            <span class="panel-icon">${icon("emails")}</span>
+          </div>
+          <div class="bf-inbox-list mt-3">${skeleton}</div>
+        </section>
       </div>
+      <section class="panel mt-4" id="bf-verse">${skeleton}</section>
     </div>`;
 
   view.querySelector("#bf-play").addEventListener("click", () => {
@@ -321,6 +335,27 @@ async function loadPreview(manual) {
       </div>`;
   }).join("");
 
+  // Caixa de entrada
+  const em = data.emails;
+  const inbox = view.querySelector(".bf-inbox-list");
+  view.querySelector("#bf-inbox").classList.toggle("is-off", em === undefined);
+  if (em === undefined) inbox.innerHTML = `<p class="text-sm text-gray-500">E-mails fora do briefing.</p><button type="button" class="stat-link" data-page-open="briefing-config">Ligar em Configurar →</button>`;
+  else if (!em) inbox.innerHTML = `<p class="text-sm text-gray-500">Nenhuma conta conectada.</p><button type="button" class="stat-link" data-page-open="briefing-config" data-focus="email">Adicionar conta de e-mail →</button>`;
+  else inbox.innerHTML = em.map((c) => c.erro
+    ? `<div class="mail-account"><p class="text-xs text-gray-300 truncate">${esc(c.conta)}</p><p class="text-xs text-red-400 mt-1">${esc(c.erro)}</p></div>`
+    : `<div class="mail-account">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs text-gray-400 truncate">${esc(c.conta)}</p>
+          <span class="status-pill ${c.nao_lidos ? "status-on" : "status-off"}"><span></span>${c.nao_lidos} não lido${c.nao_lidos === 1 ? "" : "s"}</span>
+        </div>
+        ${c.recentes.slice(0, 4).map((m) => `
+          <div class="mail-row">
+            <p class="text-xs font-semibold text-gray-200 truncate">${esc(m.de)}</p>
+            <p class="text-xs text-gray-400 truncate">${esc(m.assunto)}</p>
+          </div>`).join("")}
+        ${c.nao_lidos === 0 ? `<p class="text-xs text-gray-500 mt-2">Tudo em dia.</p>` : ""}
+      </div>`).join("");
+
   // Versículo
   const v = data.versiculo_do_dia;
   put("bf-verse", `
@@ -353,6 +388,50 @@ function renderBriefingConfig({ focus } = {}) {
   view.innerHTML = `
     <div class="max-w-5xl mx-auto w-full animate-slide-up">
       ${header("Preferências e fontes", "Configurar briefing", "O que o JARVIS usa no seu “bom dia”", backBtn('data-page-open="briefing"'))}
+
+      <section class="panel mb-4" id="mail-panel">
+        <div class="panel-head">
+          <span class="panel-icon">${icon("emails")}</span>
+          <div class="flex-1">
+            <h3>Contas de e-mail</h3>
+            <p>Leitura dos não lidos para a triagem do briefing. Somente leitura: nada é marcado como lido.</p>
+          </div>
+        </div>
+        <div id="mail-list" class="space-y-2 mt-4"><span class="skeleton w-48"></span></div>
+        <button type="button" class="nav-subitem text-jarvis-400 mt-2 !w-auto" id="mail-add-toggle">${icon("plus", 14)} Adicionar conta</button>
+        <div id="mail-form" class="hidden mt-3 p-4 rounded-xl border border-white/10 bg-black/20">
+          <div class="grid gap-3 md:grid-cols-3">
+            <label class="block">
+              <span class="field-label">Provedor</span>
+              <select class="field" data-mail="provider">
+                <option value="gmail">Gmail</option>
+                <option value="outlook">Outlook / Hotmail</option>
+                <option value="yahoo">Yahoo</option>
+                <option value="icloud">iCloud</option>
+                <option value="outro">Outro (IMAP)</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="field-label">E-mail</span>
+              <input class="field" type="email" data-mail="email" placeholder="voce@gmail.com" autocomplete="off">
+            </label>
+            <label class="block">
+              <span class="field-label">Senha de app</span>
+              <input class="field" type="password" data-mail="password" placeholder="•••• •••• •••• ••••" autocomplete="new-password">
+            </label>
+            <label class="block md:col-span-3 hidden" data-mail-host>
+              <span class="field-label">Servidor IMAP (SSL, porta 993)</span>
+              <input class="field" data-mail="host" placeholder="imap.seuprovedor.com">
+            </label>
+          </div>
+          <p class="field-hint" data-mail-hint></p>
+          <div class="flex flex-wrap items-center gap-2 mt-3">
+            <span id="mail-status" class="text-xs text-gray-500 flex-1"></span>
+            <button type="button" class="page-btn" id="mail-cancel">Cancelar</button>
+            <button type="button" class="page-btn page-btn-primary" id="mail-save">Testar e salvar</button>
+          </div>
+        </div>
+      </section>
 
       <form id="bf-form" class="space-y-4" autocomplete="off">
         <section class="panel">
@@ -467,8 +546,102 @@ function renderBriefingConfig({ focus } = {}) {
     el.abrir_automatico.checked = !!cfg.abrir_automatico;
     formEl.querySelectorAll('[name="secao"]').forEach((cb) => { cb.checked = !!cfg.secoes[cb.value]; });
     formEl.querySelectorAll('[name="tamanho"]').forEach((r) => { r.checked = r.value === cfg.tamanho; });
-    if (focus) el[focus]?.focus();
+    if (focus && el[focus]) el[focus].focus();
   });
+
+  initMailPanel(focus === "email");
+}
+
+// ----- Contas de e-mail -----
+const MAIL_HINTS = {
+  gmail: 'No Gmail use uma <b>senha de app</b> (não a sua senha): ative a verificação em 2 etapas e crie em <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" class="text-jarvis-400 underline">myaccount.google.com/apppasswords</a>. O IMAP já vem ativo.',
+  outlook: "No Outlook/Hotmail, crie uma senha de app em Segurança da conta Microsoft (precisa da verificação em 2 etapas).",
+  yahoo: "No Yahoo, gere uma senha de app em Segurança da conta.",
+  icloud: "No iCloud, gere uma senha específica de app em appleid.apple.com.",
+  outro: "Use os dados IMAP do seu provedor (conexão SSL na porta 993).",
+};
+
+async function loadMailAccounts() {
+  const list = view.querySelector("#mail-list");
+  if (!list) return;
+  try {
+    const { accounts } = await (await fetch("/api/email/accounts")).json();
+    if (!view.querySelector("#mail-list")) return;
+    list.innerHTML = accounts.length
+      ? accounts.map((a) => `
+          <div class="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-black/20">
+            <span class="status-pill status-on"><span></span>${esc(a.label)}</span>
+            <span class="text-sm text-gray-200 truncate flex-1">${esc(a.email)}</span>
+            <button type="button" class="page-btn page-btn-danger !px-2" data-mail-remove="${esc(a.id)}" data-mail-email="${esc(a.email)}" title="Remover conta">${icon("trash", 14)}</button>
+          </div>`).join("")
+      : `<p class="text-sm text-gray-500">Nenhuma conta conectada ainda.</p>`;
+  } catch {
+    list.innerHTML = `<p class="text-sm text-red-400">Não consegui carregar as contas.</p>`;
+  }
+}
+
+function initMailPanel(openForm) {
+  const panel = view.querySelector("#mail-panel");
+  const formBox = panel.querySelector("#mail-form");
+  const field = (k) => panel.querySelector(`[data-mail="${k}"]`);
+  const status = panel.querySelector("#mail-status");
+
+  const syncProvider = () => {
+    const p = field("provider").value;
+    panel.querySelector("[data-mail-host]").classList.toggle("hidden", p !== "outro");
+    panel.querySelector("[data-mail-hint]").innerHTML = MAIL_HINTS[p];
+  };
+  const toggleForm = (open) => {
+    formBox.classList.toggle("hidden", !open);
+    panel.querySelector("#mail-add-toggle").classList.toggle("hidden", open);
+    status.textContent = "";
+    if (open) { syncProvider(); field("email").focus(); }
+    else ["email", "password", "host"].forEach((k) => { field(k).value = ""; });
+  };
+
+  field("provider").addEventListener("change", syncProvider);
+  panel.querySelector("#mail-add-toggle").addEventListener("click", () => toggleForm(true));
+  panel.querySelector("#mail-cancel").addEventListener("click", () => toggleForm(false));
+  formBox.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); panel.querySelector("#mail-save").click(); } });
+
+  panel.querySelector("#mail-save").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    status.className = "text-xs text-gray-400 flex-1";
+    status.textContent = "Conectando à caixa de entrada…";
+    try {
+      const res = await fetch("/api/email/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: field("provider").value, email: field("email").value.trim(), password: field("password").value, host: field("host").value }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Não consegui conectar.");
+      toggleForm(false);
+      status.className = "text-xs text-emerald-400 flex-1";
+      loadMailAccounts();
+      window.dispatchEvent(new Event("jarvis:integrations-changed"));
+    } catch (err) {
+      status.className = "text-xs text-red-400 flex-1";
+      status.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  panel.addEventListener("click", async (e) => {
+    const rm = e.target.closest("[data-mail-remove]");
+    if (!rm) return;
+    if (!confirm(`Remover a conta ${rm.dataset.mailEmail}? A senha de app guardada é apagada.`)) return;
+    await fetch(`/api/email/accounts/${encodeURIComponent(rm.dataset.mailRemove)}`, { method: "DELETE" });
+    loadMailAccounts();
+  });
+
+  loadMailAccounts();
+  if (openForm) {
+    toggleForm(true);
+    panel.scrollIntoView({ block: "start" });
+  }
 }
 
 // "Abrir o briefing ao iniciar o dia": first visit of the day, on the dashboard
@@ -548,6 +721,20 @@ async function renderIntegrations() {
 
     <section class="panel flex flex-col">
       <div class="flex items-center justify-between">
+        <span class="panel-icon">${icon("emails", 20)}</span>
+        ${s.email.contas ? pill("on", "Conectado") : pill("off", "Sem contas")}
+      </div>
+      <h3 class="integ-title">E-mail</h3>
+      <p class="integ-desc">Não lidos das últimas 24h (remetente e assunto) para a triagem do briefing. Somente leitura, via IMAP.</p>
+      <p class="integ-result" data-result="email"></p>
+      <div class="flex flex-wrap gap-2 mt-auto pt-4">
+        ${s.email.contas ? `<button type="button" class="page-btn" data-int="email-test">Testar leitura</button>` : ""}
+        <button type="button" class="page-btn" data-page-open="briefing-config" data-focus="email">${s.email.contas ? "Gerenciar contas" : "Adicionar conta"}</button>
+      </div>
+    </section>
+
+    <section class="panel flex flex-col">
+      <div class="flex items-center justify-between">
         <span class="panel-icon">${icon("clima", 20)}</span>
         ${s.clima.cidade ? pill("on", "Ativo") : pill("warn", "Sem cidade")}
       </div>
@@ -582,6 +769,12 @@ view.addEventListener("click", async (e) => {
     const r = await (await fetch("/api/integrations/strava/test", { method: "POST" })).json();
     out("strava", r.ok
       ? `OK: ${r.atividades} atividade${r.atividades === 1 ? "" : "s"} nos últimos 7 dias${r.ultima ? `. Última: ${esc(r.ultima.tipo)} em ${esc(r.ultima.data.slice(8, 10))}/${esc(r.ultima.data.slice(5, 7))}` : ""}.`
+      : esc(r.error), r.ok);
+  } else if (action === "email-test") {
+    out("email", "Consultando…");
+    const r = await (await fetch("/api/email/test", { method: "POST" })).json();
+    out("email", r.contas
+      ? r.contas.map((c) => c.erro ? `${esc(c.conta)}: ${esc(c.erro)}` : `${esc(c.conta)}: ${c.nao_lidos} não lido${c.nao_lidos === 1 ? "" : "s"} nas últimas 24h`).join("<br>")
       : esc(r.error), r.ok);
   } else if (action === "finplan-test") {
     out("finplan", "Consultando…");

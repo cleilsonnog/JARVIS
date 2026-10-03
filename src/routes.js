@@ -12,6 +12,7 @@ const memory = require("./memory");
 const strava = require("./strava");
 const briefing = require("./briefing");
 const integrations = require("./integrations");
+const email = require("./email");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -66,9 +67,14 @@ BRIEFING DO DIA:
   1) cumprimente pelo nome conforme o horário (bom dia / boa tarde / boa noite); 2) clima em uma frase: temperatura de agora e máxima do dia ARREDONDADAS para graus inteiros ("21 graus"), condição, e se vale levar guarda-chuva — sem vento nem sensação térmica, salvo se forem extremos;
   3) lembretes atrasados e de hoje (se não houver, diga que a agenda está livre); 4) finanças só se houver alerta (fatura vencendo ou saldo negativo);
   5) se houver atividades_7_dias, uma frase sobre os treinos da semana (ou um incentivo leve se estiver parado há dias);
-  6) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
+  6) se houver emails, diga quantos não lidos e destaque no máximo 2 que pareçam importantes (pessoas, banco, igreja, trabalho, cobranças), ignorando promoções e newsletters;
+  7) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
 - Seções ausentes foram desligadas pelo usuário na tela de Briefing: não as mencione. Omita também partes que vierem com erro ou vazias, sem comentar a falha.
 - Respeite "preferencias": tamanho curto = 3 a 4 frases, detalhado = até 12 frases; siga as observações dele (ex.: tom, o que destacar).
+
+E-MAIL (somente leitura):
+- Para "tenho e-mail novo?", "chegou algo importante?", use consultar_emails. Você vê só remetente, assunto e data dos não lidos das últimas 24h, não o conteúdo; não invente o que a mensagem diz.
+- Você não envia, apaga nem marca e-mails como lidos.
 
 ATIVIDADES FÍSICAS (Strava, sincronizado com o relógio Amazfit Balance via Zepp):
 - Para treinos, corridas, caminhadas, pedais, distância, ritmo, frequência cardíaca, use consultar_atividades (somente leitura).
@@ -105,6 +111,7 @@ function register(app) {
   strava.register(app);
   briefing.register(app);
   integrations.register(app);
+  email.register(app);
 
   // Conversas
   app.get("/api/conversations", (req, res) => {
@@ -326,7 +333,7 @@ function register(app) {
       const webKeywords =
         /clima|tempo|temperatura|notícia|resultado|placar|cotação|dólar|bitcoin|quem ganhou|quando (é|foi|será)|últim[oa]|atual|hoje|agora|preço/i;
       // Personal questions ("saldo atual", "fatura de hoje", "bom dia", "agenda de hoje") must reach our tools, not web search
-      const toolKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|corri|corrida|pedal|bike|caminhada|caminhei|treino|treinei|strava|atividades?|exerc[ií]cio|ritmo|pace|frequ[eê]ncia card|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes? de hoje/i;
+      const toolKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|corri|corrida|pedal|bike|caminhada|caminhei|treino|treinei|strava|atividades?|exerc[ií]cio|ritmo|pace|frequ[eê]ncia card|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes? de hoje|e-?mails?|caixa de entrada/i;
       const needsWebSearch = webKeywords.test(message) && !toolKeywords.test(message);
 
       const tools = needsWebSearch

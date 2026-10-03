@@ -27,6 +27,7 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 - **Fé e valores** — o JARVIS sabe que o Cleilson é cristão evangélico: respeita a fé, cita a Bíblia na **NVI** com referência (sem inventar versículos) e não sugere práticas que conflitem com ela
 - **Finanças (FinPlan)** — "quanto está a fatura do Nubank?", "qual meu saldo do mês?", "quanto de limite tenho no Santander?" (somente leitura, ver [Integração FinPlan](#integração-finplan))
 - **Treinos (Strava)** — "quanto corri essa semana?", "como foi meu último treino?" (Amazfit Balance → Zepp → Strava; conectar pela tela **Integrações** do menu lateral)
+- **E-mail (IMAP, somente leitura)** — "tenho e-mail novo?" e triagem dos não lidos das últimas 24h no briefing (remetente e assunto; o conteúdo não é lido e nada é marcado como lido). Contas em Briefing → Configurar → Contas de e-mail, com **senha de app** (Gmail, Outlook, Yahoo, iCloud ou IMAP); a senha fica criptografada (AES-256-GCM) com uma chave fora do banco
 - **Pesquisa na web** — Google Search integrado (perguntas sobre clima, notícias, cotações…)
 - **Visão** — envie fotos ou use a **câmera ao vivo** ("JARVIS, o que você vê?"; `/camera` liga/desliga)
 - **Briefing "Bom dia, JARVIS"** — clima da cidade, lembretes atrasados e de hoje, alertas do FinPlan, treinos e versículo do dia num resumo falado (botão "Briefing do dia", `/briefing` ou só "bom dia"). A tela **Briefing** (menu lateral) mostra o dia em cards (agenda, treinos, previsão, próximo compromisso, finanças, agenda dos próximos 7 dias, versículo) com atualização automática; em **Configurar** você escolhe cidade, módulos, duração da fala, intervalo de atualização, abrir a tela sozinha na primeira visita do dia e observações para o JARVIS, sem mexer no código
@@ -82,6 +83,7 @@ Acesse: **http://localhost:3000**. Mudanças no `.env` exigem reiniciar o `npm r
 | `JARVIS_PASSWORD` | produção | Ativa o login; sem ela o acesso é livre (uso local) |
 | `TOOLS_MODE` | não | `full` (PC local) ou `safe` (padrão) |
 | `JARVIS_FILES_DIR` | não | Pasta acessível no modo `safe` (padrão `~/jarvis-files`) |
+| `JARVIS_SECRET` | não | Chave para criptografar as senhas de app de e-mail. Sem ela, o JARVIS cria o arquivo `.jarvis-secret` (fora do git); faça backup dele junto com o banco |
 | `JARVIS_CITY` | não | Cidade do clima do briefing (ex.: `São Pedro da Aldeia, RJ`; via Open-Meteo, sem chave) |
 | `MEMORY_LEARNING` | não | `off` desliga o aprendizado automático de memórias |
 | `FINPLAN_URL` / `FINPLAN_API_TOKEN` | não | Ativam a consulta de finanças |
@@ -172,6 +174,7 @@ JARVIS/
 │   ├── tts.js               # Voz do servidor (Gemini TTS em streaming)
 │   ├── finplan.js           # Cliente da integração FinPlan
 │   ├── strava.js            # Strava: OAuth, renovação de token e leitura de atividades
+│   ├── email.js             # E-mail via IMAP (somente leitura) + contas com senha criptografada
 │   ├── briefing.js          # Briefing do dia (agrega clima, lembretes, finanças, treinos, versículo) + configuração
 │   ├── integrations.js      # Status e testes das integrações (tela Integrações)
 │   ├── weather.js           # Clima via Open-Meteo

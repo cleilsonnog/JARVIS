@@ -2,6 +2,7 @@
 const finplan = require("./finplan");
 const strava = require("./strava");
 const { getConfig } = require("./briefing");
+const email = require("./email");
 
 function register(app) {
   app.get("/api/integrations", (req, res) => {
@@ -9,6 +10,7 @@ function register(app) {
       strava: strava.status(),
       finplan: { configured: finplan.isConfigured(), host: finplan.isConfigured() ? new URL(process.env.FINPLAN_URL).host : null },
       clima: { cidade: getConfig().cidade || null },
+      email: { contas: email.hasAccounts() },
     });
   });
 

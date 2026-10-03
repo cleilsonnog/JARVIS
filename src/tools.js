@@ -6,6 +6,7 @@ const { stmts } = require("./database");
 const finplan = require("./finplan");
 const { getBriefing } = require("./briefing");
 const strava = require("./strava");
+const email = require("./email");
 
 const functionDeclarations = [
   {
@@ -151,6 +152,15 @@ if (strava.isConfigured()) {
   });
 }
 
+// Read-only e-mail tool (IMAP accounts added on the "Configurar briefing" screen)
+functionDeclarations.push({
+  name: "consultar_emails",
+  description:
+    "Consulta (somente leitura) os e-mails NÃO LIDOS das últimas 24h nas contas de e-mail do usuário: quantidade por conta e " +
+    "remetente/assunto/data dos mais recentes (o conteúdo das mensagens não é lido). Use para 'tenho e-mail novo?', 'chegou algo importante?'.",
+  parameters: { type: "OBJECT", properties: {} },
+});
+
 // Read-only finance tool, offered only when the FinPlan integration is configured
 if (finplan.isConfigured()) {
   functionDeclarations.push({
@@ -249,6 +259,9 @@ function executeToolCall(name, args) {
       }
       case "consultar_atividades":
         return strava.getActivities(args).catch((err) => ({ error: err.message }));
+      case "consultar_emails":
+        if (!email.hasAccounts()) return { error: "Nenhuma conta de e-mail cadastrada. Adicione em Briefing > Configurar > Contas de e-mail." };
+        return email.getUnreadSummary().catch((err) => ({ error: err.message }));
       case "briefing_do_dia":
         return getBriefing().catch((err) => ({ error: err.message }));
       case "consultar_financas":
