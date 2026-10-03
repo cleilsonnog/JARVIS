@@ -71,7 +71,8 @@ BRIEFING DO DIA:
   3) lembretes atrasados e de hoje (se não houver, diga que a agenda está livre); 4) finanças só se houver alerta (fatura vencendo ou saldo negativo);
   5) se houver atividades_7_dias, uma frase sobre os treinos da semana (ou um incentivo leve se estiver parado há dias);
   6) se houver emails, diga quantos não lidos e destaque no máximo 2 que pareçam importantes (pessoas, banco, igreja, trabalho, cobranças), ignorando promoções e newsletters;
-  7) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
+  7) se houver noticias (radar), conte cada manchete em uma frase, citando a fonte ("segundo o G1, ..."), sem inventar detalhes além do resumo;
+  8) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
 - Seções ausentes foram desligadas pelo usuário na tela de Briefing: não as mencione. Omita também partes que vierem com erro ou vazias, sem comentar a falha.
 - Respeite "preferencias": tamanho curto = 3 a 4 frases, detalhado = até 12 frases; siga as observações dele (ex.: tom, o que destacar).
 

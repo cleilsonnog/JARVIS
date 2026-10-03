@@ -13,7 +13,7 @@ let timers = [];
 const PAGES = { briefing: renderBriefing, "briefing-config": renderBriefingConfig, integracoes: renderIntegrations };
 
 function clearTimers() {
-  timers.forEach(clearInterval);
+  timers.forEach((t) => { clearInterval(t); clearTimeout(t); });
   timers = [];
 }
 
@@ -87,6 +87,7 @@ const ICONS = {
   emails: `<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>`,
   trash: `<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>`,
   plus: `<path d="M12 5v14M5 12h14"/>`,
+  noticias: `<path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>`,
 };
 const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
@@ -97,8 +98,12 @@ const SECTIONS = [
   { id: "financas", label: "Finanças" },
   { id: "treinos", label: "Treinos" },
   { id: "emails", label: "E-mails" },
+  { id: "noticias", label: "Notícias" },
   { id: "versiculo", label: "Versículo" },
 ];
+
+const TOPIC_SUGGESTIONS = ["Tecnologia", "Inteligência artificial", "Finanças", "Economia", "Saúde", "Ciência", "Esportes", "Brasil", "Mundo"];
+const SOURCE_SUGGESTIONS = ["G1", "CNN Brasil", "UOL", "Folha", "Estadão", "BBC Brasil", "InfoMoney", "Tecmundo"];
 
 const backBtn = (attr = "data-page-close") =>
   `<button type="button" class="page-btn" ${attr}>${icon("back", 14)} Voltar</button>`;
@@ -120,7 +125,6 @@ const skeleton = `<span class="skeleton w-20 h-7 mt-3"></span><span class="skele
 // =====================================================================
 // Briefing (dashboard)
 // =====================================================================
-let briefingCfg = null;
 
 function renderBriefing() {
   view.innerHTML = `
@@ -182,6 +186,19 @@ function renderBriefing() {
           <div class="bf-inbox-list mt-3">${skeleton}</div>
         </section>
       </div>
+      <section class="panel mt-4" id="bf-news">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <span class="panel-icon">${icon("noticias")}</span>
+            <div>
+              <p class="page-kicker">Radar de notícias</p>
+              <h3 class="text-base font-semibold text-gray-100 mt-1" id="bf-news-title">Manchetes do dia</h3>
+            </div>
+          </div>
+          <div class="flex items-center gap-3" id="bf-news-actions"></div>
+        </div>
+        <div class="bf-news-list mt-4">${skeleton}</div>
+      </section>
       <section class="panel mt-4" id="bf-verse">${skeleton}</section>
     </div>`;
 
@@ -195,13 +212,82 @@ function renderBriefing() {
 
   fetch("/api/briefing/config").then((r) => r.json()).then((cfg) => {
     if (current !== "briefing") return;
-    briefingCfg = cfg;
     view.querySelector("#bf-every").textContent = cfg.atualizacao_min;
     renderChips(new Set(SECTIONS.map((s) => s.id).filter((id) => cfg.secoes[id])));
-    timers.push(setInterval(loadPreview, cfg.atualizacao_min * 60000));
+    timers.push(setInterval(() => { loadPreview(); loadNews(); }, cfg.atualizacao_min * 60000));
   });
   loadPreview();
+  loadNews();
 }
+
+// ----- Radar de notícias card (loaded apart: a fresh search takes ~20s) -----
+function renderNews(data) {
+  const card = view.querySelector("#bf-news");
+  if (!card) return;
+  const list = card.querySelector(".bf-news-list");
+  const actions = card.querySelector("#bf-news-actions");
+  card.classList.toggle("is-off", !!data.desligado);
+  actions.innerHTML = "";
+
+  if (data.desligado) {
+    list.innerHTML = `<p class="text-sm text-gray-500">Radar desligado. Escolha os assuntos e as fontes e ligue quando quiser.</p>
+      <button type="button" class="stat-link" data-page-open="briefing-config" data-focus="news_assuntos">Configurar o radar →</button>`;
+    return;
+  }
+  if (data.error) {
+    list.innerHTML = `<p class="text-sm text-red-400">${esc(data.error)}</p>`;
+    actions.innerHTML = `<button type="button" class="page-btn" data-news-refresh>${icon("refresh", 14)} Tentar de novo</button>`;
+    return;
+  }
+  if (!data.itens) { // radar on, no topics (shouldn't happen: saving requires one)
+    list.innerHTML = `<button type="button" class="stat-link" data-page-open="briefing-config" data-focus="news_assuntos">Defina os assuntos do radar →</button>`;
+    return;
+  }
+
+  view.querySelector("#bf-news-title").textContent = data.assuntos;
+  actions.innerHTML = `
+    ${data.atualizado_em ? `<span class="stat-stamp !mt-0" data-ts="${data.atualizado_em}">${ago(data.atualizado_em)}</span>` : ""}
+    <button type="button" class="page-btn" data-news-refresh>${icon("refresh", 14)} Atualizar notícias</button>`;
+  list.innerHTML = data.itens.length
+    ? `<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">${data.itens.map((n) => `
+        <article class="news-item">
+          ${n.assunto ? `<span class="chip">${esc(n.assunto)}</span>` : ""}
+          <h4>${esc(n.titulo)}</h4>
+          <p>${esc(n.resumo)}</p>
+          <span class="news-source">${esc(n.fonte)}</span>
+        </article>`).join("")}</div>`
+    : `<p class="text-sm text-gray-500">Nada recente sobre esses assuntos nas fontes escolhidas.</p>`;
+}
+
+function newsLoading(note) {
+  const list = view.querySelector("#bf-news .bf-news-list");
+  if (list) list.innerHTML = `<div class="grid gap-3 md:grid-cols-3">${[1, 2, 3].map(() => `<div class="news-item"><span class="skeleton w-16"></span><span class="skeleton w-full mt-3"></span><span class="skeleton w-3/4 mt-2"></span></div>`).join("")}</div>
+    <p class="text-[11px] text-gray-500 mt-3">${note}</p>`;
+}
+
+async function loadNews(force = false) {
+  let slow = null;
+  if (force) newsLoading("Pesquisando notícias novas… leva uns 20 segundos.");
+  else {
+    // Show a hint only if the answer isn't instant (first search of the configuration)
+    slow = setTimeout(() => current === "briefing" && newsLoading("Buscando as notícias pela primeira vez… leva uns 20 segundos."), 800);
+    timers.push(slow);
+  }
+  let data;
+  try {
+    const res = await fetch("/api/briefing/news" + (force ? "/refresh" : ""), { method: force ? "POST" : "GET" });
+    data = await res.json();
+    if (!res.ok) data = { error: data.error || "Não consegui buscar as notícias agora." };
+  } catch {
+    data = { error: "Não consegui buscar as notícias agora." };
+  }
+  clearTimeout(slow); // a fast (cached) answer must not be covered by the "searching" hint afterwards
+  if (current === "briefing") renderNews(data);
+}
+
+view.addEventListener("click", (e) => {
+  if (e.target.closest("[data-news-refresh]")) loadNews(true);
+});
 
 function renderChips(on) {
   const el = view.querySelector("#bf-chips");
@@ -419,7 +505,7 @@ function renderBriefingConfig({ focus } = {}) {
               <span class="field-label">Senha de app</span>
               <input class="field" type="password" data-mail="password" placeholder="•••• •••• •••• ••••" autocomplete="new-password">
             </label>
-            <label class="block md:col-span-3 hidden" data-mail-host>
+            <label class="md:col-span-3 hidden" data-mail-host>
               <span class="field-label">Servidor IMAP (SSL, porta 993)</span>
               <input class="field" data-mail="host" placeholder="imap.seuprovedor.com">
             </label>
@@ -460,6 +546,49 @@ function renderBriefingConfig({ focus } = {}) {
           </div>
         </section>
 
+        <section class="panel" id="news-panel">
+          <div class="panel-head">
+            <span class="panel-icon">${icon("noticias")}</span>
+            <div>
+              <h3>Radar de notícias</h3>
+              <p>Manchetes dos assuntos que você escolher, das fontes que preferir.</p>
+            </div>
+          </div>
+
+          <label class="option-card mt-5">
+            <input type="checkbox" name="secao" value="noticias">
+            <span class="option-body"><b>Radar ligado</b><span>Inclui as manchetes no briefing e nesta tela. Cada atualização faz uma pesquisa no Gemini (gasta tokens); o resultado fica guardado por 2 horas.</span></span>
+          </label>
+
+          <div class="news-fields">
+            <label class="block mt-5">
+              <span class="field-label">Assuntos</span>
+              <input name="news_assuntos" class="field" maxlength="200" placeholder="Ex.: tecnologia, finanças, saúde">
+            </label>
+            <div class="flex flex-wrap gap-1.5 mt-2" data-suggest="news_assuntos">
+              ${TOPIC_SUGGESTIONS.map((t) => `<button type="button" class="suggest-chip">+ ${t}</button>`).join("")}
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-[auto,1fr] mt-5">
+              <div>
+                <span class="field-label">Quantidade de notícias</span>
+                <div class="segmented">
+                  ${[1, 3, 6].map((n) => `<label><input type="radio" name="news_qtd" value="${n}"><span>${n}</span></label>`).join("")}
+                </div>
+              </div>
+              <div>
+                <label class="block">
+                  <span class="field-label">Fontes preferidas</span>
+                  <input name="news_fontes" class="field" maxlength="200" placeholder="Ex.: G1, CNN Brasil (vazio = qualquer veículo confiável)">
+                </label>
+                <div class="flex flex-wrap gap-1.5 mt-2" data-suggest="news_fontes">
+                  ${SOURCE_SUGGESTIONS.map((f) => `<button type="button" class="suggest-chip">+ ${f}</button>`).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="panel">
           <div class="panel-head">
             <span class="panel-icon">${icon("sunrise")}</span>
@@ -471,7 +600,7 @@ function renderBriefingConfig({ focus } = {}) {
 
           <span class="field-label mt-5">Módulos do bom dia</span>
           <div class="flex flex-wrap gap-2">
-            ${SECTIONS.map((s) => `
+            ${SECTIONS.filter((s) => s.id !== "noticias").map((s) => `
               <label class="toggle-chip"><input type="checkbox" name="secao" value="${s.id}"><span>${icon(s.id === "lembretes" ? "lembretes" : s.id, 14)} ${s.label}</span></label>`).join("")}
           </div>
           <span class="field-hint">Desligar um módulo tira ele da fala e desta tela.</span>
@@ -521,6 +650,7 @@ function renderBriefingConfig({ focus } = {}) {
       observacoes: data.get("observacoes"),
       atualizacao_min: Number(data.get("atualizacao_min")),
       abrir_automatico: data.has("abrir_automatico"),
+      noticias: { assuntos: data.get("news_assuntos"), quantidade: Number(data.get("news_qtd")), fontes: data.get("news_fontes") },
     };
     status.className = "text-xs text-gray-500 flex-1";
     status.textContent = "Salvando…";
@@ -544,9 +674,33 @@ function renderBriefingConfig({ focus } = {}) {
     el.observacoes.value = cfg.observacoes || "";
     el.atualizacao_min.value = String(cfg.atualizacao_min);
     el.abrir_automatico.checked = !!cfg.abrir_automatico;
+    el.news_assuntos.value = cfg.noticias.assuntos || "";
+    el.news_fontes.value = cfg.noticias.fontes || "";
+    formEl.querySelectorAll('[name="news_qtd"]').forEach((r) => { r.checked = Number(r.value) === cfg.noticias.quantidade; });
     formEl.querySelectorAll('[name="secao"]').forEach((cb) => { cb.checked = !!cfg.secoes[cb.value]; });
     formEl.querySelectorAll('[name="tamanho"]').forEach((r) => { r.checked = r.value === cfg.tamanho; });
-    if (focus && el[focus]) el[focus].focus();
+    syncNewsPanel();
+    if (focus && el[focus]) {
+      el[focus].focus();
+      el[focus].scrollIntoView({ block: "center" });
+    }
+  });
+
+  // Radar off: fields stay editable but dimmed
+  const newsToggle = formEl.querySelector('[name="secao"][value="noticias"]');
+  const syncNewsPanel = () => formEl.querySelector(".news-fields").classList.toggle("is-muted", !newsToggle.checked);
+  newsToggle.addEventListener("change", syncNewsPanel);
+
+  // Suggestion chips append to the field (comma separated, no duplicates)
+  formEl.addEventListener("click", (e) => {
+    const chip = e.target.closest(".suggest-chip");
+    if (!chip) return;
+    const field = formEl.elements[chip.parentElement.dataset.suggest];
+    const value = chip.textContent.replace(/^\+\s*/, "");
+    const parts = field.value.split(",").map((p) => p.trim()).filter(Boolean);
+    if (!parts.some((p) => p.toLowerCase() === value.toLowerCase())) parts.push(value);
+    field.value = parts.join(", ");
+    formEl.dispatchEvent(new Event("change"));
   });
 
   initMailPanel(focus === "email");

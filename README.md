@@ -28,6 +28,7 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 - **Finanças (FinPlan)** — "quanto está a fatura do Nubank?", "qual meu saldo do mês?", "quanto de limite tenho no Santander?" (somente leitura, ver [Integração FinPlan](#integração-finplan))
 - **Treinos (Strava)** — "quanto corri essa semana?", "como foi meu último treino?" (Amazfit Balance → Zepp → Strava; conectar pela tela **Integrações** do menu lateral)
 - **E-mail (IMAP, somente leitura)** — "tenho e-mail novo?" e triagem dos não lidos das últimas 24h no briefing (remetente e assunto; o conteúdo não é lido e nada é marcado como lido). Contas em Briefing → Configurar → Contas de e-mail, com **senha de app** (Gmail, Outlook, Yahoo, iCloud ou IMAP); a senha fica criptografada (AES-256-GCM) com uma chave fora do banco
+- **Radar de notícias** — manchetes dos assuntos que você escolher (ex.: tecnologia, finanças, saúde), 1, 3 ou 6 notícias, das fontes preferidas (ex.: G1, CNN Brasil), no briefing e na tela Briefing. Liga/desliga em Configurar (vem desligado). Cada atualização é uma pesquisa do Gemini com Google Search (gasta tokens, ~20s); o resultado fica guardado por 2h e é renovado em segundo plano
 - **Pesquisa na web** — Google Search integrado (perguntas sobre clima, notícias, cotações…)
 - **Visão** — envie fotos ou use a **câmera ao vivo** ("JARVIS, o que você vê?"; `/camera` liga/desliga)
 - **Briefing "Bom dia, JARVIS"** — clima da cidade, lembretes atrasados e de hoje, alertas do FinPlan, treinos, e-mails importantes e versículo do dia num resumo falado (botão "Briefing do dia", `/briefing` ou só "bom dia"). A tela **Briefing** (menu lateral) mostra o dia em cards (agenda, treinos, previsão, próximo compromisso, finanças, agenda dos próximos 7 dias, versículo) com atualização automática; em **Configurar** você escolhe cidade, módulos, duração da fala, intervalo de atualização, abrir a tela sozinha na primeira visita do dia e observações para o JARVIS, sem mexer no código
@@ -51,7 +52,7 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 ### Interface
 - **Menu lateral** — seções *Visão geral* (Chat, Painel, Briefing) e *Dados e automação* (Integrações, Lembretes); o histórico de conversas só abre ao clicar em **Chat**
 - **Tela Briefing** — o dia em cards (agenda, treinos, previsão, próximo compromisso, finanças, agenda dos próximos 7 dias, caixa de entrada, versículo), com **Atualizar**, atualização automática e **Gerar agora**
-- **Configurar briefing** — contas de e-mail, cidade, intervalo de atualização, módulos do "bom dia", duração da fala, abrir sozinho na primeira visita do dia e observações para o JARVIS, tudo sem mexer no código
+- **Configurar briefing** — contas de e-mail, radar de notícias (assuntos, quantidade, fontes), cidade, intervalo de atualização, módulos do "bom dia", duração da fala, abrir sozinho na primeira visita do dia e observações para o JARVIS, tudo sem mexer no código
 - **Tela Integrações** — status de Strava, FinPlan, E-mail e Clima, com botões de conectar e testar
 - **Reator do JARVIS** — núcleo animado (anéis, partículas) que reflete o estado: **Online · Aguardando "JARVIS" · Ouvindo · Processando · Falando**
   - No dashboard, é o fundo atrás dos cards (arrastável e redimensionável; tocar nele liga o microfone)
@@ -155,7 +156,7 @@ Digite `/` no chat para ver o autocomplete.
 | `/monitor` | Abre/fecha o monitor ao vivo (CPU, RAM, disco) |
 | `/lembretes` | Lista lembretes de hoje |
 | `/lembrete HH:MM texto` | Cria um lembrete rápido |
-| `/briefing` | Briefing do dia (clima, lembretes, finanças, treinos, e-mails, versículo) |
+| `/briefing` | Briefing do dia (clima, lembretes, finanças, treinos, e-mails, notícias, versículo) |
 | `/clima` | Mostra o clima atual (via IA) |
 | `/ip` | Mostra seu IP público |
 | `/memorias` | Lista memórias salvas do JARVIS |
@@ -200,6 +201,7 @@ JARVIS/
 │   ├── finplan.js           # Cliente da integração FinPlan
 │   ├── strava.js            # Strava: OAuth, renovação de token e leitura de atividades
 │   ├── email.js             # E-mail via IMAP (somente leitura) + contas com senha criptografada
+│   ├── news.js              # Radar de notícias (Gemini + Google Search, cache de 2h)
 │   ├── briefing.js          # Briefing do dia (agrega clima, lembretes, finanças, treinos, versículo) + configuração
 │   ├── integrations.js      # Status e testes das integrações (tela Integrações)
 │   ├── weather.js           # Clima via Open-Meteo
