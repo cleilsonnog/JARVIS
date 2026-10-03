@@ -222,7 +222,9 @@ agendaBtn.addEventListener("click", async (e) => {
 
 // Close on outside click / Escape
 document.addEventListener("click", (e) => {
-  if (!agendaPanel.classList.contains("hidden") && !e.target.closest("#agenda-panel")) agendaPanel.classList.add("hidden");
+  // composedPath is fixed when the click starts: a button replaced by the click itself (agenda "Editar")
+  // is no longer inside the panel, but its click still counts as inside
+  if (!agendaPanel.classList.contains("hidden") && !e.composedPath().includes(agendaPanel)) agendaPanel.classList.add("hidden");
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") agendaPanel.classList.add("hidden");

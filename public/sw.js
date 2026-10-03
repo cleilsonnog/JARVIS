@@ -1,5 +1,5 @@
 // Service Worker - JARVIS PWA
-const CACHE_NAME = "jarvis-v18";
+const CACHE_NAME = "jarvis-v19";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
