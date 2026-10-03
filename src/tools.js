@@ -128,7 +128,7 @@ functionDeclarations.push({
   description:
     "Resumo do dia do usuário em uma chamada: data/hora, clima da cidade dele (agora e previsão de hoje), " +
     "lembretes atrasados / de hoje / próximos, saldo do mês e faturas vencendo em 7 dias (FinPlan) e o versículo do dia (NVI). " +
-    "Use quando ele disser bom dia, pedir o briefing, o resumo do dia ou 'como está meu dia'.",
+    "Use quando ele cumprimentar com bom dia / boa tarde / boa noite, pedir o briefing, o resumo do dia ou 'como está meu dia'.",
   parameters: { type: "OBJECT", properties: {} },
 });
 

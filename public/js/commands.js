@@ -1,6 +1,7 @@
 // ===== Slash Commands =====
 import { createMessageEl, hideWelcome, scrollToBottom } from "./chat.js";
 import { speak } from "./tts.js";
+import { briefingPrompt } from "./dashboard.js";
 import { toggleCamera, isCameraOn } from "./camera.js";
 
 const COMMANDS = {
@@ -27,7 +28,7 @@ const COMMANDS = {
   "/briefing": {
     description: "Briefing do dia: clima, lembretes, finanças e versículo",
     handler: null,
-    forward: "Bom dia, JARVIS! Qual o briefing de hoje?",
+    forward: () => briefingPrompt(), // greeting follows the clock
   },
   "/clima": {
     description: "Mostra o clima atual (via IA)",
@@ -71,7 +72,8 @@ export function handleSlashCommand(message) {
   }
 
   if (command.forward) {
-    return { handled: false, forward: command.forward };
+    const forward = typeof command.forward === "function" ? command.forward() : command.forward;
+    return { handled: false, forward };
   }
 
   hideWelcome();

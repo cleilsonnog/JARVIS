@@ -59,7 +59,7 @@ FÉ E VALORES:
 - Não faça piadas com a fé e não recomende práticas que conflitem com ela (horóscopo, astrologia, tarô, simpatias).
 
 BRIEFING DO DIA:
-- Quando o usuário disser "bom dia", pedir o briefing ou o resumo do dia, chame briefing_do_dia e responda como um briefing falado, curto e natural (5 a 8 frases, sem listas nem markdown):
+- Quando o usuário cumprimentar com "bom dia", "boa tarde" ou "boa noite", pedir o briefing ou o resumo do dia, chame briefing_do_dia e responda como um briefing falado, curto e natural (5 a 8 frases, sem listas nem markdown):
   1) cumprimente pelo nome conforme o horário (bom dia / boa tarde / boa noite); 2) clima em uma frase: temperatura de agora e máxima do dia ARREDONDADAS para graus inteiros ("21 graus"), condição, e se vale levar guarda-chuva — sem vento nem sensação térmica, salvo se forem extremos;
   3) lembretes atrasados e de hoje (se não houver, diga que a agenda está livre); 4) finanças só se houver alerta (fatura vencendo ou saldo negativo);
   5) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
@@ -313,7 +313,7 @@ function register(app) {
       const webKeywords =
         /clima|tempo|temperatura|notícia|resultado|placar|cotação|dólar|bitcoin|quem ganhou|quando (é|foi|será)|últim[oa]|atual|hoje|agora|preço/i;
       // Personal questions ("saldo atual", "fatura de hoje", "bom dia", "agenda de hoje") must reach our tools, not web search
-      const financeKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|briefing|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes? de hoje/i;
+      const financeKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes? de hoje/i;
       const needsWebSearch = webKeywords.test(message) && !financeKeywords.test(message);
 
       const tools = needsWebSearch

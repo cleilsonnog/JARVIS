@@ -134,7 +134,7 @@ form.addEventListener("submit", async (e) => {
   }
 
   let imageData = null;
-  if (/bom dia|briefing|resumo d[oe] (meu )?dia/i.test(message)) markBriefingHeard();
+  if (/bom dia|boa tarde|boa noite|briefing|resumo d[oe] (meu )?dia/i.test(message)) markBriefingHeard();
 
   // Camera: "fecha a câmera" is handled locally; with the camera on (or "o que você vê?") send a frame
   if (!pendingFile) {

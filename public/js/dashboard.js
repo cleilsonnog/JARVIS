@@ -35,7 +35,10 @@ function getSavedOrder() {
 }
 
 // ----- Morning briefing button (pulses until heard today) -----
-const BRIEFING_PROMPT = "Bom dia, JARVIS! Qual o briefing de hoje?";
+// Greeting follows the clock: "Boa noite, JARVIS! ..." at night
+export function briefingPrompt() {
+  return `${greeting()}, JARVIS! Qual o briefing de hoje?`;
+}
 const BRIEFING_KEY = "jarvis-briefing-day";
 const todayKey = () => new Date().toLocaleDateString("sv-SE");
 
@@ -71,7 +74,7 @@ export function renderDashboard() {
           </div>
         </div>
         <div class="flex items-center gap-2">
-        <button type="button" id="dash-briefing" class="dash-prompt ${briefingHeardToday() ? "" : "briefing-new"} flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-jarvis-400 border border-jarvis-500/40 hover:bg-jarvis-500/10 transition-colors" data-prompt="${BRIEFING_PROMPT}" title="Clima, lembretes, finanças e versículo do dia">
+        <button type="button" id="dash-briefing" class="dash-prompt ${briefingHeardToday() ? "" : "briefing-new"} flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-jarvis-400 border border-jarvis-500/40 hover:bg-jarvis-500/10 transition-colors" data-prompt="${briefingPrompt()}" title="Clima, lembretes, finanças e versículo do dia">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           Briefing do dia
         </button>
@@ -224,7 +227,9 @@ function submitPrompt(text, fillOnly) {
 chat.addEventListener("click", (e) => {
   const prompt = e.target.closest(".dash-prompt");
   if (prompt) {
-    submitPrompt(prompt.dataset.prompt, prompt.dataset.fill !== undefined);
+    // The briefing button may have been rendered hours ago: greet for the current time
+    const text = prompt.id === "dash-briefing" ? briefingPrompt() : prompt.dataset.prompt;
+    submitPrompt(text, prompt.dataset.fill !== undefined);
     return;
   }
 
