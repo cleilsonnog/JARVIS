@@ -1,40 +1,18 @@
-// ===== Integrations (sidebar): Strava connect / disconnect =====
+// ===== Integrations: result of the Strava OAuth round trip + "needs attention" dot in the sidebar =====
+// The screen itself (status, connect, test) is in js/pages.js.
 import { createMessageEl, hideWelcome } from "./chat.js";
 
-const statusEl = document.getElementById("strava-status");
-const actionBtn = document.getElementById("strava-action");
+const dot = document.getElementById("nav-integrations-dot");
 
+// Amber dot on "Integrações" when Strava is set up on the server but not connected
 async function refresh() {
   try {
-    const s = await (await fetch("/api/strava/status")).json();
-    actionBtn.classList.toggle("hidden", !s.configured);
-    if (!s.configured) {
-      statusEl.textContent = "não configurado";
-    } else if (s.connected) {
-      statusEl.innerHTML = `<span class="text-emerald-400">●</span> ${s.athlete?.nome || "conectado"}`;
-      actionBtn.textContent = "Desconectar";
-      actionBtn.dataset.action = "disconnect";
-    } else {
-      statusEl.textContent = "desconectado";
-      actionBtn.textContent = "Conectar";
-      actionBtn.dataset.action = "connect";
-    }
-  } catch {
-    statusEl.textContent = "indisponível";
-  }
+    const s = await (await fetch("/api/integrations")).json();
+    dot.classList.toggle("hidden", !(s.strava.configured && !s.strava.connected));
+  } catch {}
 }
 
-actionBtn.addEventListener("click", async () => {
-  if (actionBtn.dataset.action === "connect") {
-    location.href = "/api/strava/connect"; // Strava consent page, then back to /?strava=...
-    return;
-  }
-  if (!confirm("Desconectar o Strava? O JARVIS deixa de ver seus treinos.")) return;
-  await fetch("/api/strava/disconnect", { method: "POST" });
-  refresh();
-});
-
-// Result of the OAuth round trip (/api/strava/callback redirects to /?strava=<result>)
+// /api/strava/callback redirects to /?strava=<result>
 const result = new URLSearchParams(location.search).get("strava");
 if (result) {
   history.replaceState(null, "", "/");
@@ -48,4 +26,5 @@ if (result) {
   createMessageEl("assistant", messages[result] || messages.erro);
 }
 
+window.addEventListener("jarvis:integrations-changed", refresh);
 refresh();

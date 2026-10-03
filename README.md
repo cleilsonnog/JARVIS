@@ -16,7 +16,7 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 | Banco | SQLite (better-sqlite3) |
 | Notificações | Web Push (VAPID, `web-push`) |
 | Upload | multer + pdf-parse |
-| Integrações | FinPlan (finanças, somente leitura) |
+| Integrações | FinPlan (finanças), Strava (treinos do Amazfit via Zepp), Open-Meteo (clima) — todas somente leitura |
 | Deploy | VPS Contabo + PM2 (usuário sem root) + Nginx + Let's Encrypt |
 | Mobile | PWA (instalável no celular) |
 
@@ -26,9 +26,10 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 - **Chat com IA** — respostas em streaming via Gemini
 - **Fé e valores** — o JARVIS sabe que o Cleilson é cristão evangélico: respeita a fé, cita a Bíblia na **NVI** com referência (sem inventar versículos) e não sugere práticas que conflitem com ela
 - **Finanças (FinPlan)** — "quanto está a fatura do Nubank?", "qual meu saldo do mês?", "quanto de limite tenho no Santander?" (somente leitura, ver [Integração FinPlan](#integração-finplan))
+- **Treinos (Strava)** — "quanto corri essa semana?", "como foi meu último treino?" (Amazfit Balance → Zepp → Strava; conectar pela tela **Integrações** do menu lateral)
 - **Pesquisa na web** — Google Search integrado (perguntas sobre clima, notícias, cotações…)
 - **Visão** — envie fotos ou use a **câmera ao vivo** ("JARVIS, o que você vê?"; `/camera` liga/desliga)
-- **Briefing "Bom dia, JARVIS"** — clima da cidade, lembretes atrasados e de hoje, alertas do FinPlan e versículo do dia num resumo falado (botão "Briefing do dia", `/briefing` ou só "bom dia")
+- **Briefing "Bom dia, JARVIS"** — clima da cidade, lembretes atrasados e de hoje, alertas do FinPlan, treinos e versículo do dia num resumo falado (botão "Briefing do dia", `/briefing` ou só "bom dia"). A tela **Briefing** (menu lateral) mostra o dia em cards (agenda, treinos, previsão, próximo compromisso, finanças, agenda dos próximos 7 dias, versículo) com atualização automática; em **Configurar** você escolhe cidade, módulos, duração da fala, intervalo de atualização, abrir a tela sozinha na primeira visita do dia e observações para o JARVIS, sem mexer no código
 - **Memória que aprende sozinha** — depois de cada resposta, guarda em segundo plano fatos duradouros sobre você (pessoas, igreja, preferências, projetos); "esquece…" apaga; card "O que sei sobre você" para editar ou apagar
 - **Ferramentas do sistema** — comandos, apps e arquivos (conforme o [`TOOLS_MODE`](#modos-de-ferramentas-tools_mode))
 - **Upload de documentos** — PDF, TXT, MD, JS, PY, JSON, CSV + imagens, com drag & drop
@@ -170,7 +171,9 @@ JARVIS/
 │   ├── push.js              # Web Push + agendador de lembretes
 │   ├── tts.js               # Voz do servidor (Gemini TTS em streaming)
 │   ├── finplan.js           # Cliente da integração FinPlan
-│   ├── briefing.js          # Briefing do dia (agrega clima, lembretes, finanças, versículo)
+│   ├── strava.js            # Strava: OAuth, renovação de token e leitura de atividades
+│   ├── briefing.js          # Briefing do dia (agrega clima, lembretes, finanças, treinos, versículo) + configuração
+│   ├── integrations.js      # Status e testes das integrações (tela Integrações)
 │   ├── weather.js           # Clima via Open-Meteo
 │   ├── verses.js            # Versículo do dia no servidor (mesma lista do navegador)
 │   └── memory.js            # Aprendizado automático de memórias
@@ -192,7 +195,8 @@ JARVIS/
 │       ├── tts.js           # Fala: voz do servidor + reserva do navegador
 │       ├── stt.js           # Reconhecimento de voz + wake word "JARVIS"
 │       ├── chat.js          # UI do chat (mensagens, typing indicator)
-│       ├── sidebar.js       # Sidebar e conversas
+│       ├── sidebar.js       # Menu lateral: navegação e histórico de conversas (abre em "Chat")
+│       ├── pages.js         # Telas do menu: Briefing, Configurar briefing e Integrações
 │       ├── upload.js        # Upload de documentos + imagens + drag & drop
 │       ├── camera.js        # Câmera ao vivo e detecção de "o que você vê?"
 │       ├── commands.js      # Slash commands

@@ -5,6 +5,7 @@ import { getSessionId, loadConversations, startNewChat } from "./js/sidebar.js";
 import { markBriefingHeard } from "./js/dashboard.js";
 import { getPendingFile, clearPendingFile } from "./js/upload.js";
 import { handleSlashCommand, getCommandSuggestions } from "./js/commands.js";
+import { closePage } from "./js/pages.js";
 import { isCameraOn, cameraIntent, captureFrame, closeCamera } from "./js/camera.js";
 import "./js/stt.js";
 import "./js/integrations.js";
@@ -118,6 +119,7 @@ form.addEventListener("submit", async (e) => {
   let message = input.value.trim();
   const pendingFile = getPendingFile();
   if (!message && !pendingFile) return;
+  closePage(); // a message sent from the Briefing / Integrações screens goes to the chat
 
   // Check for slash commands
   if (message.startsWith("/") && !pendingFile) {
@@ -258,6 +260,8 @@ form.addEventListener("submit", async (e) => {
                 recall_memories: "Lembrando",
                 delete_memory: "Esquecido",
                 consultar_financas: "Consultando FinPlan",
+                consultar_atividades: "Consultando Strava",
+                briefing_do_dia: "Montando briefing",
               };
               const label = toolNames[tc.name] || tc.name;
               const detail = tc.args.command || tc.args.app_name || tc.args.file_path || tc.args.key || tc.args.directory || "";

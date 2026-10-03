@@ -1,9 +1,10 @@
 // ===== Weather (Open-Meteo: free, no API key) =====
-// City from JARVIS_CITY (e.g. "São Pedro da Aldeia, RJ"); geocoded once, forecast cached 30 min.
+// City from the briefing settings (or JARVIS_CITY, e.g. "São Pedro da Aldeia, RJ");
+// geocoded once per city, forecast cached 30 min.
 
 const CACHE_MS = 30 * 60 * 1000;
-let place = null;
-let cache = { at: 0, data: null };
+const places = new Map(); // city -> geocoding result
+let cache = { at: 0, city: null, data: null };
 
 // WMO weather codes -> Portuguese
 const WMO = {
@@ -28,12 +29,16 @@ async function geocode(city) {
   return results.find((r) => wanted && r.admin1?.toLowerCase() === wanted.toLowerCase()) || results[0];
 }
 
-async function getWeather() {
-  const city = process.env.JARVIS_CITY;
-  if (!city) return null;
-  if (cache.data && Date.now() - cache.at < CACHE_MS) return cache.data;
+async function findPlace(city) {
+  if (!places.has(city)) places.set(city, await geocode(city));
+  return places.get(city);
+}
 
-  if (!place) place = await geocode(city);
+async function getWeather(city = process.env.JARVIS_CITY) {
+  if (!city) return null;
+  if (cache.data && cache.city === city && Date.now() - cache.at < CACHE_MS) return cache.data;
+
+  const place = await findPlace(city);
   const url = "https://api.open-meteo.com/v1/forecast?" + new URLSearchParams({
     latitude: place.latitude,
     longitude: place.longitude,
@@ -46,6 +51,7 @@ async function getWeather() {
 
   cache = {
     at: Date.now(),
+    city,
     data: {
       cidade: `${place.name}, ${place.admin1}`,
       agora: { temperatura: f.current.temperature_2m, sensacao: f.current.apparent_temperature, condicao: WMO[f.current.weather_code] ?? "—", vento_kmh: f.current.wind_speed_10m },
@@ -55,4 +61,4 @@ async function getWeather() {
   return cache.data;
 }
 
-module.exports = { getWeather };
+module.exports = { getWeather, findPlace };

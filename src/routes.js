@@ -10,6 +10,8 @@ const push = require("./push");
 const tts = require("./tts");
 const memory = require("./memory");
 const strava = require("./strava");
+const briefing = require("./briefing");
+const integrations = require("./integrations");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -65,7 +67,8 @@ BRIEFING DO DIA:
   3) lembretes atrasados e de hoje (se não houver, diga que a agenda está livre); 4) finanças só se houver alerta (fatura vencendo ou saldo negativo);
   5) se houver atividades_7_dias, uma frase sobre os treinos da semana (ou um incentivo leve se estiver parado há dias);
   6) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
-- Omita partes que vierem com erro ou vazias, sem comentar a falha.
+- Seções ausentes foram desligadas pelo usuário na tela de Briefing: não as mencione. Omita também partes que vierem com erro ou vazias, sem comentar a falha.
+- Respeite "preferencias": tamanho curto = 3 a 4 frases, detalhado = até 12 frases; siga as observações dele (ex.: tom, o que destacar).
 
 ATIVIDADES FÍSICAS (Strava, sincronizado com o relógio Amazfit Balance via Zepp):
 - Para treinos, corridas, caminhadas, pedais, distância, ritmo, frequência cardíaca, use consultar_atividades (somente leitura).
@@ -100,6 +103,8 @@ function register(app) {
   push.startReminderScheduler();
   tts.register(app);
   strava.register(app);
+  briefing.register(app);
+  integrations.register(app);
 
   // Conversas
   app.get("/api/conversations", (req, res) => {
@@ -334,7 +339,7 @@ function register(app) {
         tools,
       });
 
-      const chat = model.startChat({ history });
+      let chat = model.startChat({ history });
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -359,6 +364,7 @@ function register(app) {
       let fullResponse = "";
       let searchQueries = [];
       let result = await chat.sendMessageStream(parts);
+      let retried = false;
 
       while (true) {
         for await (const chunk of result.stream) {
@@ -374,7 +380,18 @@ function register(app) {
         if (grounding?.webSearchQueries) searchQueries = grounding.webSearchQueries;
 
         const calls = response.functionCalls();
-        if (!calls || calls.length === 0) break;
+        if (!calls || calls.length === 0) {
+          // Gemini 2.5 Flash sometimes ends the turn with nothing at all (finishReason STOP, no text,
+          // no tool call). Ask again once, from a fresh chat so the empty turn isn't in the history.
+          if (!fullResponse && !retried) {
+            retried = true;
+            console.warn("Resposta vazia do Gemini, tentando de novo:", response.candidates?.[0]?.finishReason);
+            chat = model.startChat({ history });
+            result = await chat.sendMessageStream(parts);
+            continue;
+          }
+          break;
+        }
 
         const toolResults = [];
         for (const call of calls) {

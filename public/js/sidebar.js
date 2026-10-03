@@ -1,6 +1,7 @@
-// ===== Sidebar =====
+// ===== Sidebar: navigation; the chat history only opens from "Chat" =====
 import { createMessageEl, setHasMessages } from "./chat.js";
 import { renderDashboard } from "./dashboard.js";
+import { openPage, closePage } from "./pages.js";
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
@@ -10,6 +11,9 @@ const toggleSidebarBtn = document.getElementById("toggle-sidebar");
 const closeSidebarBtn = document.getElementById("close-sidebar");
 const newChatBtn = document.getElementById("new-chat-btn");
 const conversationList = document.getElementById("conversation-list");
+const chatNav = sidebar.querySelector('[data-nav="chat"]');
+const chatHistory = document.getElementById("chat-history");
+const IS_TOUCH = window.matchMedia("(pointer: coarse)").matches;
 
 let sessionId = crypto.randomUUID();
 
@@ -17,44 +21,76 @@ export function getSessionId() { return sessionId; }
 export function setSessionId(id) { sessionId = id; }
 
 function openSidebar() {
-  sidebar.classList.remove("-translate-x-full");
+  sidebar.classList.remove("sidebar-closed");
   sidebarOverlay.classList.add("active");
 }
 
 function closeSidebar() {
-  sidebar.classList.add("-translate-x-full");
+  sidebar.classList.add("sidebar-closed");
   sidebarOverlay.classList.remove("active");
 }
 
 toggleSidebarBtn.addEventListener("click", () => {
-  if (sidebar.classList.contains("-translate-x-full")) openSidebar();
+  if (sidebar.classList.contains("sidebar-closed")) openSidebar();
   else closeSidebar();
 });
 
 closeSidebarBtn.addEventListener("click", closeSidebar);
 sidebarOverlay.addEventListener("click", closeSidebar);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeSidebar();
+});
 
+// ----- Navigation -----
+// Highlights where the user is: "painel" (dashboard), "chat" (a conversation) or a screen
+function setActive(view) {
+  sidebar.querySelectorAll(".nav-item").forEach((el) => el.classList.toggle("is-active", el.dataset.nav === view));
+}
+window.addEventListener("jarvis:view", (e) => setActive(e.detail));
+
+function toggleHistory(open = chatHistory.classList.contains("hidden")) {
+  chatHistory.classList.toggle("hidden", !open);
+  chatNav.setAttribute("aria-expanded", String(open));
+  if (open) loadConversations();
+}
+
+sidebar.querySelector("nav").addEventListener("click", (e) => {
+  const item = e.target.closest(".nav-item");
+  if (!item) return;
+  const view = item.dataset.nav;
+  if (view === "chat") return toggleHistory();
+  if (view === "painel") return startNewChat();
+  if (view === "lembretes") {
+    // The agenda lives in the header bell; stop the click here so its outside-click handler doesn't close it
+    e.stopPropagation();
+    closeSidebar();
+    document.getElementById("agenda-btn").click();
+    return;
+  }
+  openPage(view);
+  closeSidebar();
+});
+
+// ----- Conversation history -----
 export async function loadConversations() {
+  // Only rendered while the history is open; it's reloaded each time it opens
+  if (chatHistory.classList.contains("hidden")) return;
   const res = await fetch("/api/conversations");
   const conversations = await res.json();
-  conversationList.innerHTML = "";
+  conversationList.innerHTML = conversations.length
+    ? ""
+    : `<p class="px-3 py-2 text-[11px] text-gray-600">Nenhuma conversa ainda.</p>`;
 
   conversations.forEach((conv) => {
     const div = document.createElement("div");
     const isActive = conv.id === sessionId;
-    div.className = `group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
-      isActive
-        ? "bg-jarvis-500/10 border border-jarvis-500/20 text-jarvis-400"
-        : "text-gray-400 hover:bg-white/[0.03] hover:text-gray-300"
-    }`;
+    div.className = `conv-item group ${isActive ? "is-active" : ""}`;
     div.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 opacity-50">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-      </svg>
-      <span class="text-xs truncate flex-1">${conv.title}</span>
-      <button class="delete-conv opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-red-400 transition-all" data-id="${conv.id}">
+      <span class="text-xs truncate flex-1"></span>
+      <button class="delete-conv opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-red-400 transition-all" title="Apagar conversa">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>`;
+    div.querySelector("span").textContent = conv.title;
 
     div.addEventListener("click", (e) => {
       if (e.target.closest(".delete-conv")) return;
@@ -63,8 +99,9 @@ export async function loadConversations() {
 
     div.querySelector(".delete-conv").addEventListener("click", async (e) => {
       e.stopPropagation();
+      if (!confirm(`Apagar a conversa "${conv.title}"?`)) return;
       await fetch(`/api/conversations/${conv.id}`, { method: "DELETE" });
-      if (conv.id === sessionId) startNewChat();
+      if (conv.id === sessionId) startNewChat({ keepSidebar: true });
       else loadConversations();
     });
 
@@ -75,6 +112,7 @@ export async function loadConversations() {
 async function loadConversation(id) {
   sessionId = id;
   setHasMessages(true);
+  closePage();
 
   const res = await fetch(`/api/conversations/${id}/messages`);
   const messages = await res.json();
@@ -84,21 +122,28 @@ async function loadConversation(id) {
     createMessageEl(msg.role === "assistant" ? "assistant" : "user", msg.content);
   });
 
+  setActive("chat");
   closeSidebar();
   loadConversations();
-  input.focus();
+  if (!IS_TOUCH) input.focus();
 }
 
-export function startNewChat() {
+export function startNewChat({ keepSidebar = false } = {}) {
   sessionId = crypto.randomUUID();
   setHasMessages(false);
+  closePage();
   renderDashboard();
-  closeSidebar();
+  setActive("painel");
+  if (!keepSidebar) closeSidebar();
   loadConversations();
-  input.focus();
+  if (!IS_TOUCH) input.focus();
 }
 
-newChatBtn.addEventListener("click", startNewChat);
+newChatBtn.addEventListener("click", () => startNewChat());
 
-// Init
-loadConversations();
+// A message sent from the dashboard starts a conversation
+window.addEventListener("jarvis:reply-done", () => {
+  if (!document.getElementById("welcome") && document.getElementById("page-view").classList.contains("hidden")) setActive("chat");
+});
+
+setActive("painel");

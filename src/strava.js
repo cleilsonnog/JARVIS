@@ -138,12 +138,14 @@ async function getActivities({ dias = 7, tipo } = {}) {
   };
 }
 
+function status() {
+  const t = isConfigured() ? loadTokens() : null;
+  return { configured: isConfigured(), connected: !!t, athlete: t?.athlete || null };
+}
+
 // ----- Routes -----
 function register(app) {
-  app.get("/api/strava/status", (req, res) => {
-    const t = isConfigured() ? loadTokens() : null;
-    res.json({ configured: isConfigured(), connected: !!t, athlete: t?.athlete || null });
-  });
+  app.get("/api/strava/status", (req, res) => res.json(status()));
 
   // Logged-in user starts the consent flow
   app.get("/api/strava/connect", (req, res) => {
@@ -204,4 +206,4 @@ setInterval(() => {
   for (const [s, at] of pendingStates) if (Date.now() - at > STATE_TTL) pendingStates.delete(s);
 }, STATE_TTL).unref();
 
-module.exports = { isConfigured, isConnected: () => !!loadTokens(), getActivities, register };
+module.exports = { isConfigured, isConnected: () => !!loadTokens(), status, getActivities, register };
