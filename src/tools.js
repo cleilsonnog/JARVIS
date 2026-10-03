@@ -144,7 +144,7 @@ if (strava.isConfigured()) {
     parameters: {
       type: "OBJECT",
       properties: {
-        dias: { type: "INTEGER", description: "Período em dias até hoje (1 = hoje, 7 = semana, 30 = mês). Padrão 7." },
+        dias: { type: "INTEGER", description: "Período em dias até hoje (1 = hoje, 7 = semana, 30 = mês). Padrão 7. A resposta sempre traz ultima_atividade_registrada, use-a para 'último treino'." },
         tipo: { type: "STRING", description: "Filtrar por tipo: corrida, caminhada, pedal, musculação, natação..." },
       },
     },

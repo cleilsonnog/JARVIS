@@ -121,7 +121,21 @@ async function getActivities({ dias = 7, tipo } = {}) {
     tempo: duration(t.tempo_s),
   }]));
 
-  return { periodo_dias: days, total_atividades: list.length, totais_por_tipo, atividades: list.slice(0, 15).map(summarize) };
+  // Always say what the latest workout was, even if it's older than the requested period
+  // ("como foi meu último treino?" shouldn't fail just because it was 3 days ago)
+  let ultima = list[0];
+  if (!ultima) {
+    const [latest] = await api("/athlete/activities?per_page=1&page=1");
+    ultima = latest;
+  }
+
+  return {
+    periodo_dias: days,
+    total_atividades: list.length,
+    totais_por_tipo,
+    atividades: list.slice(0, 15).map(summarize),
+    ultima_atividade_registrada: ultima ? summarize(ultima) : null,
+  };
 }
 
 // ----- Routes -----
