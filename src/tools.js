@@ -62,7 +62,7 @@ const functionDeclarations = [
   },
   {
     name: "create_reminder",
-    description: "Cria um lembrete/alarme para uma data e hora específica. Use quando o usuário pedir para lembrar algo.",
+    description: "Cria um lembrete/alarme para uma data e hora específica. Use quando o usuário pedir para lembrar algo. Retorna o id do lembrete criado.",
     parameters: {
       type: "object",
       properties: {
@@ -74,8 +74,30 @@ const functionDeclarations = [
   },
   {
     name: "list_reminders",
-    description: "Lista todos os lembretes pendentes.",
+    description: "Lista os lembretes não concluídos (pendentes e já avisados), com id, data/hora e texto. Use antes de editar ou excluir para descobrir o id.",
     parameters: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "update_reminder",
+    description: "Edita um lembrete existente: corrige o texto e/ou muda a data e hora. Informe só o que mudar. Se a data/hora mudar, ele volta a ser pendente e avisa de novo no novo horário.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Id do lembrete (de list_reminders ou de create_reminder)" },
+        text: { type: "string", description: "Novo texto (opcional)" },
+        remind_at: { type: "string", description: "Nova data e hora no formato YYYY-MM-DD HH:MM (opcional)" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "delete_reminder",
+    description: "Exclui um lembrete pelo id. Use quando o usuário pedir para apagar, excluir, remover ou cancelar um lembrete.",
+    parameters: {
+      type: "object",
+      properties: { id: { type: "integer", description: "Id do lembrete (de list_reminders ou de create_reminder)" } },
+      required: ["id"],
+    },
   },
   {
     name: "save_memory",
@@ -121,6 +143,19 @@ const TOOLS_MODE = process.env.TOOLS_MODE === "full" ? "full" : "safe";
 const FILES_ROOT = TOOLS_MODE === "full"
   ? os.homedir()
   : path.resolve(process.env.JARVIS_FILES_DIR || path.join(os.homedir(), "jarvis-files"));
+const REMIND_AT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+
+// Used by the update_reminder tool and the agenda's edit button. A new time means a new alert: back to pending.
+function editReminder(id, { text, remind_at } = {}) {
+  const current = stmts.getReminder.get(id);
+  if (!current) return { error: "Lembrete não encontrado (pode ter sido excluído)." };
+  if (remind_at && !REMIND_AT.test(remind_at)) return { error: "Data inválida: use YYYY-MM-DD HH:MM." };
+  const newText = String(text ?? "").trim().slice(0, 300) || current.text;
+  const remindAt = remind_at || current.remind_at;
+  const rescheduled = remindAt !== current.remind_at;
+  stmts.updateReminder.run(newText, remindAt, rescheduled ? 0 : current.notified, rescheduled ? 0 : current.done, current.id);
+  return { before: current, after: { id: current.id, text: newText, remind_at: remindAt } };
+}
 const SAFE_DISABLED = new Set(["execute_command", "open_application"]);
 
 if (TOOLS_MODE === "safe") fs.mkdirSync(FILES_ROOT, { recursive: true });
@@ -268,15 +303,27 @@ function executeToolCall(name, args) {
         // Async: the caller awaits it; errors become a tool error instead of a rejection
         return finplan.getFinancialSummary(args.mes).catch((err) => ({ error: err.message }));
       case "create_reminder": {
-        stmts.addReminder.run(args.text, args.remind_at);
-        return { output: `Lembrete criado: "${args.text}" para ${args.remind_at}` };
+        if (!REMIND_AT.test(args.remind_at || "")) return { error: "Data inválida: use YYYY-MM-DD HH:MM." };
+        const { lastInsertRowid } = stmts.addReminder.run(args.text, args.remind_at);
+        return { output: `Lembrete criado (id ${lastInsertRowid}): "${args.text}" para ${args.remind_at}` };
       }
       case "list_reminders": {
-        const reminders = stmts.getReminders.all();
+        const reminders = stmts.getUpcomingReminders.all();
         if (reminders.length === 0) return { output: "Nenhum lembrete pendente." };
         return {
-          output: reminders.map((r) => `[${r.id}] ${r.remind_at} - ${r.text}`).join("\n"),
+          output: reminders.map((r) => `[id ${r.id}] ${r.remind_at} - ${r.text}${r.notified ? " (já avisado, aguardando o usuário concluir)" : ""}`).join("\n"),
         };
+      }
+      case "update_reminder": {
+        const r = editReminder(args.id, args);
+        if (r.error) return { error: `${r.error} Use list_reminders para ver os ids.` };
+        return { output: `Lembrete ${r.after.id} atualizado: "${r.after.text}" para ${r.after.remind_at} (antes: "${r.before.text}" em ${r.before.remind_at})` };
+      }
+      case "delete_reminder": {
+        const current = stmts.getReminder.get(args.id);
+        if (!current) return { error: `Lembrete ${args.id} não encontrado. Use list_reminders para ver os ids.` };
+        stmts.deleteReminder.run(current.id);
+        return { output: `Lembrete excluído: "${current.text}" (${current.remind_at})` };
       }
       case "save_memory": {
         stmts.saveMemory.run(args.key, args.value);
@@ -309,4 +356,4 @@ function executeToolCall(name, args) {
   }
 }
 
-module.exports = { functionDeclarations: activeDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT };
+module.exports = { functionDeclarations: activeDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT, editReminder };

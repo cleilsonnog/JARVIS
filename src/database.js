@@ -72,6 +72,7 @@ const stmts = {
   markNotified: db.prepare("UPDATE reminders SET notified = 1 WHERE id = ?"),
   getReminders: db.prepare("SELECT id, text, remind_at, notified FROM reminders WHERE notified = 0 ORDER BY remind_at ASC"),
   deleteReminder: db.prepare("DELETE FROM reminders WHERE id = ?"),
+  updateReminder: db.prepare("UPDATE reminders SET text = ?, remind_at = ?, notified = ?, done = ? WHERE id = ?"),
   getTodayReminders: db.prepare("SELECT id, text, remind_at, notified, done FROM reminders WHERE date(remind_at) = date('now', 'localtime') ORDER BY remind_at ASC"),
   // Alerted but not confirmed yet (shown as cards until "Concluir" / "Adiar")
   getActiveReminders: db.prepare("SELECT id, text, remind_at FROM reminders WHERE notified = 1 AND done = 0 ORDER BY remind_at ASC"),

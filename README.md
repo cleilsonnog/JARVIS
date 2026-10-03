@@ -43,6 +43,7 @@ Assistente pessoal com IA inspirado no JARVIS do Iron Man. Criado por **Cleilson
 
 ### Lembretes
 - **Notificações push** — chegam no horário mesmo com o app fechado e a tela bloqueada, com botões **Concluir** e **Adiar 10 min**
+- **Editar e excluir** — pelo chat ou voz ("errei, era às 16h30", "exclui o lembrete do dentista") ou pelos botões **Editar** (texto + data/hora na própria linha) e **Excluir** da agenda; mudar o horário faz o lembrete voltar a pendente e avisar de novo
 - **Estados** — pendente → avisado → concluído (só conclui quando você confirma)
 - **Agenda** — card no dashboard e sininho no topo, agrupados em *Atrasados / Hoje / Amanhã / datas*; o número do sininho conta só atrasados e de hoje
 - **Lembretes perdidos** — ao abrir o app, aparecem como "Lembrete atrasado" até você agir

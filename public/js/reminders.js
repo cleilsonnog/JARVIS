@@ -239,6 +239,8 @@ agendaPanel.addEventListener("click", (e) => {
 });
 
 window.addEventListener("jarvis:reminders-changed", refreshAgenda);
+// Edited in the agenda with a new time: the old alert card no longer applies
+window.addEventListener("jarvis:reminder-rescheduled", (e) => removeCard(e.detail));
 // A chat reply may have created a reminder ("JARVIS, me lembra amanhã às 9h...")
 window.addEventListener("jarvis:reply-done", () => window.dispatchEvent(new Event("jarvis:reminders-changed")));
 setInterval(refreshAgenda, 60000);

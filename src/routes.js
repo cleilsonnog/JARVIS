@@ -5,7 +5,7 @@ const os = require("os");
 const { execSync } = require("child_process");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { db, stmts } = require("./database");
-const { functionDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT } = require("./tools");
+const { functionDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT, editReminder } = require("./tools");
 const push = require("./push");
 const tts = require("./tts");
 const memory = require("./memory");
@@ -36,6 +36,8 @@ ${TOOLS_MODE === "full" ? `- Executar comandos no terminal (execute_command)
 - Listar arquivos de um diretório (list_files)
 - Criar lembretes/alarmes (create_reminder)
 - Listar lembretes pendentes (list_reminders)
+- Editar lembretes: texto e/ou horário (update_reminder)
+- Excluir lembretes (delete_reminder)
 - Salvar informações na memória (save_memory) — use para lembrar coisas entre conversas
 - Buscar memórias salvas (recall_memories)
 - Remover memórias (delete_memory)
@@ -53,6 +55,7 @@ ${TOOLS_MODE === "full" ? `- O diretório home do usuário é EXATAMENTE: ${os.h
 - NUNCA execute comandos destrutivos como rm -rf /, mkfs, dd, ou similares
 - NUNCA modifique arquivos do sistema sem ser solicitado
 - Para lembretes, o formato de data é YYYY-MM-DD HH:MM (horário local)
+- Para corrigir ou apagar um lembrete: se acabou de criá-lo, use o id que create_reminder devolveu; senão chame list_reminders para achar o id. Se houver mais de um lembrete que combine com o pedido, pergunte qual antes de mexer. Prefira editar a apagar e criar outro. Depois, confirme em uma frase o que mudou.
 - Quando o usuário pedir "daqui X minutos/horas", calcule a hora com base na data/hora atual fornecida abaixo
 - Quando receber uma imagem, analise-a descrevendo o que vê e respondendo perguntas sobre ela
 
@@ -162,6 +165,13 @@ function register(app) {
     if (!r) return res.status(404).json({ error: "Lembrete não encontrado" });
     stmts.deleteReminder.run(r.id);
     res.json({ ok: true });
+  });
+
+  // Agenda "Editar" button: text and/or date-time
+  app.put("/api/reminders/:id", (req, res) => {
+    const r = editReminder(Number(req.params.id), { text: req.body?.text, remind_at: req.body?.remind_at });
+    if (r.error) return res.status(r.error.includes("não encontrado") ? 404 : 400).json({ error: r.error });
+    res.json(r.after);
   });
 
   app.post("/api/reminders/:id/done", (req, res) => {
@@ -333,7 +343,7 @@ function register(app) {
       const webKeywords =
         /clima|tempo|temperatura|notícia|resultado|placar|cotação|dólar|bitcoin|quem ganhou|quando (é|foi|será)|últim[oa]|atual|hoje|agora|preço/i;
       // Personal questions ("saldo atual", "fatura de hoje", "bom dia", "agenda de hoje") must reach our tools, not web search
-      const toolKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|corri|corrida|pedal|bike|caminhada|caminhei|treino|treinei|strava|atividades?|exerc[ií]cio|ritmo|pace|frequ[eê]ncia card|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes? de hoje|e-?mails?|caixa de entrada/i;
+      const toolKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|corri|corrida|pedal|bike|caminhada|caminhei|treino|treinei|strava|atividades?|exerc[ií]cio|ritmo|pace|frequ[eê]ncia card|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes?|lembra|alarmes?|e-?mails?|caixa de entrada/i;
       const needsWebSearch = webKeywords.test(message) && !toolKeywords.test(message);
 
       const tools = needsWebSearch
