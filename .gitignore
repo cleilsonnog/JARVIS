@@ -16,3 +16,6 @@ jarvis.db-*
 
 # Build output (npm run build:css)
 public/tailwind.css
+
+# Documentação completa (só local)
+README-COMPLETO.md
