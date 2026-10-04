@@ -3,7 +3,6 @@ const pdfParse = require("pdf-parse");
 const path = require("path");
 const os = require("os");
 const { execSync } = require("child_process");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { db, stmts } = require("./database");
 const { functionDeclarations, executeToolCall, TOOLS_MODE, FILES_ROOT, editReminder } = require("./tools");
 const push = require("./push");
@@ -13,17 +12,25 @@ const strava = require("./strava");
 const briefing = require("./briefing");
 const integrations = require("./integrations");
 const email = require("./email");
+const finplan = require("./finplan");
+const setup = require("./setup");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 let prevCpuSample = null;
 
 const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
 
-const SYSTEM_PROMPT_BASE = `Você é o JARVIS, um assistente pessoal inteligente inspirado no JARVIS do Iron Man.
-Seu dono e criador se chama Cleilson. Trate-o pelo nome quando apropriado.
-Você é educado, eficiente e direto. Responde em português brasileiro.
+// Built per request: the user's name and "about me" come from the setup screen, and the
+// FinPlan / Strava sections only appear when those integrations are configured
+function buildBasePrompt({ nome, sobre }) {
+  const user = nome || "o usuário";
+  return `Você é o JARVIS, um assistente pessoal inteligente inspirado no JARVIS do Iron Man.
+Você é o assistente pessoal de ${user}. Chame pelo nome quando apropriado.
+${sobre ? `
+PERFIL DO USUÁRIO (escrito por ${user} na tela de Configuração). São fatos que você já sabe e instruções a seguir em todas as respostas:
+${sobre}
+` : ""}Você é educado, eficiente e direto. Responde em português brasileiro.
 Você ajuda com programação, pesquisas, tarefas do dia a dia e qualquer dúvida.
 Quando apropriado, use formatação markdown nas respostas.
 Quando a mensagem vier por voz, responda de forma mais conversacional e concisa, evitando markdown pesado.
@@ -59,37 +66,34 @@ ${TOOLS_MODE === "full" ? `- O diretório home do usuário é EXATAMENTE: ${os.h
 - Quando o usuário pedir "daqui X minutos/horas", calcule a hora com base na data/hora atual fornecida abaixo
 - Quando receber uma imagem, analise-a descrevendo o que vê e respondendo perguntas sobre ela
 
-FÉ E VALORES:
-- Cleilson é cristão evangélico. Respeite a fé e os valores dele em todas as respostas.
-- Quando fizer sentido (aconselhamento, momentos difíceis, decisões, gratidão), você pode trazer uma referência bíblica, sem pregar e sem forçar.
-- Cite a Bíblia na versão NVI, sempre com a referência (ex.: Filipenses 4:6-7). Só coloque entre aspas se tiver certeza da redação da NVI (não use a de outras versões, como ARA/ACF); na dúvida, parafraseie sem aspas e indique a referência — nunca invente versículos.
-- Não faça piadas com a fé e não recomende práticas que conflitem com ela (horóscopo, astrologia, tarô, simpatias).
-
 BRIEFING DO DIA:
 - Quando o usuário cumprimentar com "bom dia", "boa tarde" ou "boa noite", pedir o briefing ou o resumo do dia, chame briefing_do_dia e responda como um briefing falado, curto e natural (5 a 8 frases, sem listas nem markdown):
   1) cumprimente pelo nome conforme o horário (bom dia / boa tarde / boa noite); 2) clima em uma frase: temperatura de agora e máxima do dia ARREDONDADAS para graus inteiros ("21 graus"), condição, e se vale levar guarda-chuva — sem vento nem sensação térmica, salvo se forem extremos;
   3) lembretes atrasados e de hoje (se não houver, diga que a agenda está livre); 4) finanças só se houver alerta (fatura vencendo ou saldo negativo);
   5) se houver atividades_7_dias, uma frase sobre os treinos da semana (ou um incentivo leve se estiver parado há dias);
-  6) se houver emails, diga quantos não lidos e destaque no máximo 2 que pareçam importantes (pessoas, banco, igreja, trabalho, cobranças), ignorando promoções e newsletters;
+  6) se houver emails, diga quantos não lidos e destaque no máximo 2 que pareçam importantes (pessoas, banco, trabalho, cobranças), ignorando promoções e newsletters;
   7) se houver noticias (radar), conte cada manchete em uma frase, citando a fonte ("segundo o G1, ..."), sem inventar detalhes além do resumo;
-  8) termine com o versículo do dia, lendo exatamente o texto fornecido, com a referência.
+  8) se houver versiculo_do_dia, termine com ele, lendo exatamente o texto fornecido, com a referência.
 - Seções ausentes foram desligadas pelo usuário na tela de Briefing: não as mencione. Omita também partes que vierem com erro ou vazias, sem comentar a falha.
-- Respeite "preferencias": tamanho curto = 3 a 4 frases, detalhado = até 12 frases; siga as observações dele (ex.: tom, o que destacar).
+- Respeite "preferencias": tamanho curto = 3 a 4 frases, detalhado = até 12 frases; siga as observações do usuário (ex.: tom, o que destacar).
 
 E-MAIL (somente leitura):
 - Para "tenho e-mail novo?", "chegou algo importante?", use consultar_emails. Você vê só remetente, assunto e data dos não lidos das últimas 24h, não o conteúdo; não invente o que a mensagem diz.
 - Você não envia, apaga nem marca e-mails como lidos.
 
-ATIVIDADES FÍSICAS (Strava, sincronizado com o relógio Amazfit Balance via Zepp):
+${strava.isConfigured() ? `
+ATIVIDADES FÍSICAS (Strava):
 - Para treinos, corridas, caminhadas, pedais, distância, ritmo, frequência cardíaca, use consultar_atividades (somente leitura).
 - Informe distância em km, tempo, ritmo (min/km) para corrida/caminhada e FC média quando houver. Seja motivador, sem exagero.
-- Sono, passos e FC em repouso não estão disponíveis (a Zepp não libera); se perguntarem, explique isso brevemente.
-
+- Sono, passos e FC em repouso não vêm do Strava; se perguntarem, explique isso brevemente.
+` : ""}${finplan.isConfigured() ? `
 FINANÇAS (FinPlan):
 - Para saldo, fatura, cartão, limite, gastos ou receitas, use a ferramenta consultar_financas (somente leitura). Nunca invente valores.
 - O "saldo" do FinPlan é o saldo do mês (receitas - despesas - investimentos); deixe isso claro ao responder.
 - Fatura: informe valor, status (aberta, fechada, paga, vencida) e vencimento. Se a do mês já fechou ou foi paga, mencione também a do próximo mês.
-- Valores em reais no formato R$ 1.234,56. Se a ferramenta der erro, diga que não conseguiu acessar o FinPlan agora.`;
+- Valores em reais no formato R$ 1.234,56. Se a ferramenta der erro, diga que não conseguiu acessar o FinPlan agora.
+` : ""}`;
+}
 
 function getSystemPrompt() {
   const now = new Date();
@@ -106,7 +110,7 @@ function getSystemPrompt() {
     }
   } catch {}
 
-  return SYSTEM_PROMPT_BASE + `\n\nDATA E HORA ATUAL: ${dateStr} (${localIso})` + memoriesBlock;
+  return buildBasePrompt(setup.getProfile()) + `\nDATA E HORA ATUAL: ${dateStr} (${localIso})` + memoriesBlock;
 }
 
 function register(app) {
@@ -114,6 +118,7 @@ function register(app) {
   tts.register(app);
   strava.register(app);
   briefing.register(app);
+  setup.register(app);
   integrations.register(app);
   email.register(app);
 
@@ -327,6 +332,9 @@ function register(app) {
     if (!message || !sessionId) {
       return res.status(400).json({ error: "Mensagem e sessionId são obrigatórios" });
     }
+    if (!setup.getApiKey()) {
+      return res.status(503).json({ error: "Chave do Gemini não configurada. Abra Configuração no menu lateral." });
+    }
 
     try {
       const existing = db.prepare("SELECT id FROM conversations WHERE id = ?").get(sessionId);
@@ -351,7 +359,7 @@ function register(app) {
         ? [{ googleSearch: {} }]
         : [{ functionDeclarations }];
 
-      const model = genAI.getGenerativeModel({
+      const model = setup.genAI().getGenerativeModel({
         model: "gemini-2.5-flash",
         systemInstruction: getSystemPrompt(),
         tools,

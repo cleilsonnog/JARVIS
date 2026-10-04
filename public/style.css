@@ -515,6 +515,34 @@
 .status-warn { color: #fbbf24; border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.07); }
 .status-off { color: #6b7280; border-color: rgba(107,114,128,0.35); }
 
+/* Configuração inicial (setup.js) */
+.setup-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; margin-bottom: 1.25rem; }
+.setup-step {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%;
+  padding: 0.55rem 0.7rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem;
+  font-size: 0.75rem; color: #6b7280; background: rgba(255,255,255,0.02); transition: all 0.2s; text-align: left;
+}
+.setup-step:not(:disabled):hover { color: #d1d5db; border-color: rgba(var(--theme-accent-rgb),0.35); }
+.setup-step:disabled { cursor: not-allowed; opacity: 0.5; }
+.setup-step.is-current { color: #f3f4f6; border-color: rgba(var(--theme-accent-rgb),0.6); background: rgba(var(--theme-accent-rgb),0.12); }
+.setup-num {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 1.4rem; height: 1.4rem; border-radius: 999px; border: 1px solid currentColor;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px;
+}
+.setup-step.is-done .setup-num { color: #34d399; background: rgba(52,211,153,0.1); }
+@media (max-width: 639px) {
+  .setup-step { justify-content: center; padding: 0.5rem; }
+  .setup-step > span:last-child { display: none; }
+}
+.setup-list li { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.45rem; font-size: 0.8rem; color: #d1d5db; }
+.setup-list li svg { flex-shrink: 0; color: var(--theme-accent); }
+.setup-howto { margin-top: 1rem; padding-left: 1.2rem; list-style: decimal; font-size: 0.8rem; line-height: 1.6; color: #d1d5db; }
+.setup-howto li + li { margin-top: 0.3rem; }
+.setup-howto a, #setup-body .integ-desc a { color: var(--theme-accent); text-decoration: underline; }
+#setup-body code { padding: 0.05rem 0.3rem; border-radius: 0.3rem; background: rgba(255,255,255,0.08); font-size: 0.85em; color: #e5e7eb; }
+.page-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .integ-title { margin-top: 1rem; font-size: 1.1rem; font-weight: 600; color: #f3f4f6; }
 .integ-desc { margin-top: 0.3rem; font-size: 0.8rem; line-height: 1.5; color: #9ca3af; }
 .integ-meta { margin-top: 0.75rem; font-size: 0.75rem; color: #6b7280; }

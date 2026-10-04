@@ -7,6 +7,7 @@ Assistente pessoal com IA inspirado no JARVIS do Homem de Ferro, com voz, visão
 
 ## Funcionalidades
 
+- **Configuração guiada** na primeira abertura: chave do Gemini e perfil (obrigatórios), o resto opcional
 - **Chat com IA** em streaming, com pesquisa na web (Google Search) e function calling
 - **Voz**: wake word "JARVIS", fala natural com pausas e resposta falada (Gemini TTS em streaming, com a voz do navegador como reserva)
 - **Visão**: análise de imagens enviadas e câmera ao vivo
@@ -32,23 +33,32 @@ Assistente pessoal com IA inspirado no JARVIS do Homem de Ferro, com voz, visão
 
 ## Como rodar
 
+Requisitos: Node.js 20+ e uma conta Google (para a chave gratuita do Gemini).
+
 ```bash
+git clone <url-do-repositorio> && cd JARVIS
 npm install
 npm run dev     # compila o CSS em modo watch e reinicia o servidor ao mudar o backend
 ```
 
-Acesse **http://localhost:3000**. Em produção: `npm start`.
+Abra **http://localhost:3000** no Chrome. Na primeira vez, a tela de **Configuração** guia você:
 
-## Variáveis de ambiente (`.env`)
+1. **Chave do Gemini** (obrigatória): crie em [aistudio.google.com/apikey](https://aistudio.google.com/apikey) e cole na tela. Ela é testada e guardada criptografada.
+2. **Seu perfil** (obrigatório): como o JARVIS deve te chamar e, se quiser, um texto sobre você e como prefere as respostas.
+3. **Extras** (opcionais): voz, notificações, briefing, e-mail, integrações, senha.
+
+Não é preciso criar `.env` para rodar no seu computador. A configuração pode ser reaberta pelo menu lateral, em **Configuração**. Em produção: `npm start`.
+
+## Variáveis de ambiente (`.env`, todas opcionais)
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `GEMINI_API_KEY` | sim | Chave do Gemini (chat, visão e voz) |
+| `GEMINI_API_KEY` | não | Chave do Gemini; se definida, tem prioridade sobre a salva na tela de Configuração |
 | `PORT` | não | Porta (padrão 3000) |
 | `JARVIS_PASSWORD` | produção | Ativa o login; sem ela o acesso é livre |
 | `TOOLS_MODE` | não | `full` (PC local: comandos, apps, arquivos) ou `safe` (padrão: sem terminal, arquivos só em `JARVIS_FILES_DIR`) |
 | `JARVIS_FILES_DIR` | não | Pasta acessível no modo `safe` (padrão `~/jarvis-files`) |
-| `JARVIS_SECRET` | não | Chave das senhas de e-mail criptografadas; sem ela é criado `.jarvis-secret` (faça backup junto com o banco) |
+| `JARVIS_SECRET` | não | Chave que criptografa os segredos salvos pela tela (chave do Gemini, senhas de e-mail); sem ela é criado `.jarvis-secret` (faça backup junto com o banco) |
 | `JARVIS_CITY` | não | Cidade inicial do clima |
 | `FINPLAN_URL` / `FINPLAN_API_TOKEN` | não | Ativam a integração com o FinPlan |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | não | Ativam a integração com o Strava |
@@ -83,7 +93,7 @@ Detalhes em [DEPLOY.md](DEPLOY.md).
 - Login por senha, sessões guardadas como hash e limite de tentativas por IP
 - Modo `safe` por padrão: um servidor mal configurado nunca expõe terminal ou arquivos
 - Comandos destrutivos bloqueados; app roda sem root na VPS
-- Integrações somente leitura; senhas de e-mail criptografadas (AES-256-GCM)
+- Integrações somente leitura; chave do Gemini e senhas de e-mail criptografadas (AES-256-GCM)
 
 ---
 

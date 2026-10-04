@@ -4,6 +4,8 @@
 // If anything fails before the first audio byte, we answer with an error status and the
 // browser falls back to its own (Web Speech) voice.
 
+const { getApiKey } = require("./setup");
+
 const MODEL = process.env.TTS_MODEL || "gemini-3.1-flash-tts-preview";
 const VOICE = process.env.TTS_VOICE || "Algenib";
 const STYLE = "Fale em português do Brasil, com tom calmo, confiante e cordial de um assistente pessoal:";
@@ -11,14 +13,14 @@ const MAX_CHARS = 3000;
 const SAMPLE_RATE = 24000;
 
 function isEnabled() {
-  return process.env.TTS_PROVIDER !== "browser" && !!process.env.GEMINI_API_KEY;
+  return process.env.TTS_PROVIDER !== "browser" && !!getApiKey();
 }
 
 async function streamSpeech(text, res, signal) {
   const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse", {
     method: "POST",
     headers: {
-      "x-goog-api-key": process.env.GEMINI_API_KEY,
+      "x-goog-api-key": getApiKey(),
       "Content-Type": "application/json",
       "Api-Revision": "2026-05-20",
     },

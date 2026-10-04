@@ -12,6 +12,7 @@ import "./js/integrations.js";
 import "./js/theme.js";
 import "./js/reminders.js";
 import "./js/dashboard.js";
+import "./js/setup.js";
 
 const form = document.getElementById("input-form");
 const input = document.getElementById("input");
@@ -214,7 +215,11 @@ form.addEventListener("submit", async (e) => {
       location.href = "/login.html";
       return;
     }
-    if (!res.ok) throw new Error("Erro na API");
+    if (!res.ok) {
+      // e.g. 503 when the Gemini key isn't set yet: show the server's explanation
+      const { error } = await res.json().catch(() => ({}));
+      throw Object.assign(new Error("Erro na API"), { userMessage: error });
+    }
 
     const bubble = createMessageEl("assistant", "");
     currentBubbleWrapper = bubble.parentElement;
@@ -288,7 +293,7 @@ form.addEventListener("submit", async (e) => {
     loadConversations();
   } catch (err) {
     hideTyping();
-    createMessageEl("assistant", "Desculpe, ocorreu um erro. Tente novamente.");
+    createMessageEl("assistant", err.userMessage || "Desculpe, ocorreu um erro. Tente novamente.");
     console.error(err);
   }
 

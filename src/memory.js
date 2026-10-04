@@ -3,15 +3,14 @@
 // a durable fact about the user worth keeping (or a correction / "esquece..."). Results go to
 // the same `memories` table the system prompt already injects, marked source = "auto".
 
-const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
+const { SchemaType } = require("@google/generative-ai");
 const { stmts } = require("./database");
+const { genAI, getProfile } = require("./setup");
 
 const MODEL = process.env.MEMORY_MODEL || "gemini-2.5-flash";
 const MIN_CHARS = 12;     // ignore "ok", "obrigado", etc.
 const MAX_CHANGES = 3;    // per exchange
 const MAX_VALUE = 300;
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const schema = {
   type: SchemaType.OBJECT,
@@ -32,17 +31,17 @@ const schema = {
   required: ["changes"],
 };
 
-const INSTRUCTIONS = `Você é o módulo de memória de longo prazo do JARVIS, assistente pessoal do Cleilson.
-Analise a troca abaixo e decida se ela revela FATOS DURADOUROS sobre o Cleilson que valem ser lembrados em conversas futuras.
+const instructions = (nome) => `Você é o módulo de memória de longo prazo do JARVIS, assistente pessoal de ${nome}.
+Analise a troca abaixo e decida se ela revela FATOS DURADOUROS sobre ${nome} que valem ser lembrados em conversas futuras.
 
-GUARDE (action "save"): pessoas da vida dele e o vínculo (família, amigos, pastor), igreja e ministério, preferências e gostos,
+GUARDE (action "save"): pessoas da vida do usuário e o vínculo (família, amigos), comunidades e grupos que frequenta, preferências e gostos,
 rotinas e hábitos, objetivos e projetos (ex.: apps que desenvolve), trabalho, datas importantes (aniversários), como prefere ser tratado.
 ATUALIZE um fato existente reutilizando a MESMA key quando a informação mudar ou ficar mais completa.
-APAGUE (action "delete") quando ele pedir para esquecer algo ou corrigir uma informação que deixou de ser verdade.
+APAGUE (action "delete") quando o usuário pedir para esquecer algo ou corrigir uma informação que deixou de ser verdade.
 
 NÃO GUARDE: coisas passageiras (clima, saldo, faturas, lembretes — já têm sistema próprio), o que o JARVIS disse por conta própria,
-perguntas genéricas, dados sensíveis (saúde, documentos, senhas, endereço, valores financeiros) a menos que ele peça explicitamente
-para lembrar, nem nada que você esteja deduzindo sem ele ter dito.
+perguntas genéricas, dados sensíveis (saúde, documentos, senhas, endereço, valores financeiros) a menos que o usuário peça explicitamente
+para lembrar, nem nada que você esteja deduzindo sem ter sido dito.
 
 Na dúvida, não guarde. A maioria das trocas não gera nenhuma mudança: responda {"changes": []}.
 No máximo ${MAX_CHANGES} mudanças.`;
@@ -54,17 +53,18 @@ async function learnFromExchange(userMessage, assistantReply) {
   const known = stmts.getAllMemories.all().slice(0, 80);
   const knownBlock = known.length ? known.map((m) => `- ${m.key}: ${m.value}`).join("\n") : "(nenhuma ainda)";
 
-  const model = genAI.getGenerativeModel({
+  const nome = getProfile().nome || "Usuário";
+  const model = genAI().getGenerativeModel({
     model: MODEL,
     generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.1 },
   });
-  const prompt = `${INSTRUCTIONS}
+  const prompt = `${instructions(nome)}
 
 MEMÓRIAS ATUAIS:
 ${knownBlock}
 
 TROCA:
-Cleilson: ${text.slice(0, 2000)}
+${nome}: ${text.slice(0, 2000)}
 JARVIS: ${String(assistantReply || "").slice(0, 1500)}`;
 
   const result = await model.generateContent(prompt);

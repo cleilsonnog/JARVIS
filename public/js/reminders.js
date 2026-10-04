@@ -133,9 +133,9 @@ function urlBase64ToUint8Array(base64) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
-const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+export const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
-async function subscribePush() {
+export async function subscribePush() {
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {

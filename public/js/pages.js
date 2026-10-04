@@ -12,6 +12,10 @@ let current = null;
 let timers = [];
 const PAGES = { briefing: renderBriefing, "briefing-config": renderBriefingConfig, integracoes: renderIntegrations };
 
+// Screens that live in their own module (e.g. setup.js) register here
+export function registerPage(name, render) { PAGES[name] = render; }
+export const isCurrentPage = (name) => current === name;
+
 function clearTimers() {
   timers.forEach((t) => { clearInterval(t); clearTimeout(t); });
   timers = [];
@@ -45,7 +49,7 @@ view.addEventListener("click", (e) => {
 });
 
 // ----- Helpers -----
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const brl = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const km = (n) => `${Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`;
 const today = () => new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -87,9 +91,17 @@ const ICONS = {
   emails: `<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>`,
   trash: `<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>`,
   plus: `<path d="M12 5v14M5 12h14"/>`,
+  key: `<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>`,
+  user: `<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
+  bell: `<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>`,
+  phone: `<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>`,
+  shield: `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>`,
+  terminal: `<path d="M4 17l6-6-6-6M12 19h8"/>`,
+  link: `<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>`,
+  check: `<path d="M20 6L9 17l-5-5"/>`,
   noticias: `<path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>`,
 };
-const icon = (name, size = 18) =>
+export const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
 const SECTIONS = [
@@ -108,7 +120,7 @@ const SOURCE_SUGGESTIONS = ["G1", "CNN Brasil", "UOL", "Folha", "Estadão", "BBC
 const backBtn = (attr = "data-page-close") =>
   `<button type="button" class="page-btn" ${attr}>${icon("back", 14)} Voltar</button>`;
 
-function header(kicker, title, sub, actions = backBtn()) {
+export function header(kicker, title, sub, actions = backBtn()) {
   return `
     <div class="flex flex-wrap items-end justify-between gap-3 mb-6">
       <div>
@@ -815,7 +827,7 @@ function initMailPanel(openForm) {
 // =====================================================================
 const STRAVA_LOGO = `<svg width="22" height="22" viewBox="0 0 24 24" fill="#fc4c02" aria-hidden="true"><path d="M15.39 17.94l-2.09-4.12h-3.07l5.16 10.18 5.15-10.18h-3.07M10.34 0L3.37 13.82h4.1l2.87-5.66 2.86 5.66h4.1z"/></svg>`;
 
-function pill(state, text) {
+export function pill(state, text) {
   return `<span class="status-pill status-${state}"><span></span>${text}</span>`;
 }
 
@@ -848,7 +860,7 @@ async function renderIntegrations() {
         ${stravaState}
       </div>
       <h3 class="integ-title">Strava</h3>
-      <p class="integ-desc">Treinos do Amazfit Balance (Zepp → Strava): corridas, caminhadas, pedais, distância, ritmo e FC.</p>
+      <p class="integ-desc">Treinos sincronizados com o Strava (relógio ou app do celular): corridas, caminhadas, pedais, distância, ritmo e FC.</p>
       ${st.connected ? `<p class="integ-meta">Conta: <span class="text-gray-200">${esc(st.athlete?.nome || "—")}</span></p>` : ""}
       ${!st.configured ? `<p class="integ-meta">Defina STRAVA_CLIENT_ID e STRAVA_CLIENT_SECRET no .env do servidor.</p>` : ""}
       <p class="integ-result" data-result="strava"></p>
@@ -859,19 +871,19 @@ async function renderIntegrations() {
       </div>
     </section>
 
-    <section class="panel flex flex-col">
+    ${fp.configured ? `<section class="panel flex flex-col">
       <div class="flex items-center justify-between">
         <span class="panel-icon">${icon("financas", 20)}</span>
-        ${fp.configured ? pill("on", "Configurado") : pill("off", "Não configurado")}
+        ${pill("on", "Configurado")}
       </div>
       <h3 class="integ-title">FinPlan</h3>
       <p class="integ-desc">Saldo do mês, faturas por cartão e vencimentos, lidos do seu app de finanças.</p>
-      ${fp.configured ? `<p class="integ-meta">Servidor: <span class="text-gray-200">${esc(fp.host)}</span></p>` : `<p class="integ-meta">Defina FINPLAN_URL e FINPLAN_API_TOKEN no .env do servidor.</p>`}
+      <p class="integ-meta">Servidor: <span class="text-gray-200">${esc(fp.host)}</span></p>
       <p class="integ-result" data-result="finplan"></p>
       <div class="flex flex-wrap gap-2 mt-auto pt-4">
-        ${fp.configured ? `<button type="button" class="page-btn" data-int="finplan-test">Testar conexão</button>` : ""}
+        <button type="button" class="page-btn" data-int="finplan-test">Testar conexão</button>
       </div>
-    </section>
+    </section>` : ""}
 
     <section class="panel flex flex-col">
       <div class="flex items-center justify-between">

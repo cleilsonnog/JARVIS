@@ -174,7 +174,7 @@ if (strava.isConfigured()) {
   functionDeclarations.push({
     name: "consultar_atividades",
     description:
-      "Consulta (somente leitura) as atividades físicas do usuário no Strava (sincronizadas do relógio Amazfit Balance): " +
+      "Consulta (somente leitura) as atividades físicas do usuário no Strava (sincronizadas do relógio ou app do celular): " +
       "totais por tipo (quantidade, km, tempo) e as atividades recentes com distância, tempo, ritmo, velocidade, FC média/máxima e elevação. " +
       "Use para perguntas sobre treinos, corridas, caminhadas, pedais, quanto correu/andou, último treino, ritmo ou evolução.",
     parameters: {
