@@ -367,10 +367,15 @@ async function loadPreview(manual) {
   else if (!t) put("bf-treinos", statCard({ iconName: "treinos", label: "Treinos", value: "—", sub: `<button type="button" class="stat-link" data-page-open="integracoes">Conectar o Strava →</button>` }));
   else {
     const kinds = Object.entries(t.por_tipo).map(([k, v]) => `${esc(k)} ${km(v.distancia_km)}`).join(" · ");
+    // Always name the latest workout, so today's run is visible and not just part of the 7-day count
+    const u = t.ultima;
+    const ago = u && daysUntil(u.data);
+    const when = !u ? "" : ago === 0 ? "hoje" : ago === -1 ? "ontem" : `${esc(u.data.slice(8, 10))}/${esc(u.data.slice(5, 7))}`;
+    const last = u ? `último: ${when}, ${esc(u.tipo)}${u.distancia_km ? ` ${km(u.distancia_km)}` : ""}` : "nenhum treino registrado";
     put("bf-treinos", statCard({
       iconName: "treinos", tag: "7 dias", label: "Treinos",
       value: `${t.total}`,
-      sub: `atividade${t.total === 1 ? "" : "s"}${kinds ? ` · ${kinds}` : ""}` + (kinds ? "" : t.ultima ? ` · último: ${esc(t.ultima.tipo)} em ${esc(t.ultima.data.slice(8, 10))}/${esc(t.ultima.data.slice(5, 7))}` : " · nenhum treino registrado"),
+      sub: `atividade${t.total === 1 ? "" : "s"}${kinds ? ` · ${kinds}` : ""}<br>${last}`,
     }));
   }
 
