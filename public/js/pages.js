@@ -80,6 +80,7 @@ const ICONS = {
   lembretes: `<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>`,
   financas: `<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>`,
   treinos: `<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>`,
+  academia: `<path d="M6 5v14M18 5v14M3 9v6M21 9v6M6 12h12"/>`,
   versiculo: `<path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M12 7v6M9 10h6"/>`,
   sunrise: `<path d="M17 18a5 5 0 00-10 0M12 2v7M4.22 10.22l1.42 1.42M1 18h2M21 18h2M18.36 11.64l1.42-1.42M23 22H1M8 6l4-4 4 4"/>`,
   clock: `<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>`,
@@ -149,9 +150,10 @@ function renderBriefing() {
 
       <div class="grid gap-4 lg:grid-cols-3">
         <div class="lg:col-span-2 flex flex-col gap-4">
-          <div class="grid gap-4 grid-cols-2">
+          <div class="grid gap-4 grid-cols-2" id="bf-top">
             <div class="panel" id="bf-agenda">${skeleton}</div>
             <div class="panel" id="bf-treinos">${skeleton}</div>
+            <div class="panel hidden col-span-2 sm:col-span-1" id="bf-academia">${skeleton}</div>
           </div>
 
           <section class="panel panel-hero flex-1 flex flex-col">
@@ -361,21 +363,10 @@ async function loadPreview(manual) {
     }));
   }
 
-  // Treinos: Strava activities, plus today's gym workout from Treino.IA when configured
+  // Treinos (Strava)
   const t = data.atividades_7_dias;
-  const g = data.academia;
-  const gymLine = !g ? "" : g.erro ? `<br><span class="text-amber-400">academia: ${esc(g.erro)}</span>`
-    : !g.plano ? "<br>academia: nenhum plano ativo"
-    : !g.hoje ? `<br>academia: sem treino hoje · sequência ${g.sequencia}`
-    : g.hoje.descanso ? `<br>academia: hoje é descanso · sequência ${g.sequencia}`
-    : `<br>academia: ${esc(g.hoje.treino)} ${g.hoje.concluido ? '<span class="text-emerald-400">✓ feito</span>' : "(pendente)"} · sequência ${g.sequencia}`;
   if (t === undefined) put("bf-treinos", offCard("treinos", "Treinos"), true);
-  else if (!t && g && !g.erro && g.plano) put("bf-treinos", statCard({
-    iconName: "treinos", tag: "Semana", label: "Treinos",
-    value: `${g.semana.feitos}/${g.semana.previstos}`,
-    sub: `treinos de academia na semana${gymLine}`,
-  }));
-  else if (!t) put("bf-treinos", statCard({ iconName: "treinos", label: "Treinos", value: "—", sub: `<button type="button" class="stat-link" data-page-open="integracoes">Conectar o Strava →</button>${gymLine}` }));
+  else if (!t) put("bf-treinos", statCard({ iconName: "treinos", label: "Treinos", value: "—", sub: `<button type="button" class="stat-link" data-page-open="integracoes">Conectar o Strava →</button>` }));
   else {
     const kinds = Object.entries(t.por_tipo).map(([k, v]) => `${esc(k)} ${km(v.distancia_km)}`).join(" · ");
     // Always name the latest workout, so today's run is visible and not just part of the 7-day count
@@ -386,8 +377,26 @@ async function loadPreview(manual) {
     put("bf-treinos", statCard({
       iconName: "treinos", tag: "7 dias", label: "Treinos",
       value: `${t.total}`,
-      sub: `atividade${t.total === 1 ? "" : "s"}${kinds ? ` · ${kinds}` : ""}<br>${last}${gymLine}`,
+      sub: `atividade${t.total === 1 ? "" : "s"}${kinds ? ` · ${kinds}` : ""}<br>${last}`,
     }));
+  }
+
+  // Academia (Treino.IA): only when configured; the top row grows to 3 columns
+  const g = data.academia;
+  const gymEl = view.querySelector("#bf-academia");
+  gymEl?.classList.toggle("hidden", !g);
+  view.querySelector("#bf-top")?.classList.toggle("sm:grid-cols-3", !!g);
+  if (g) {
+    const streak = `sequência ${g.sequencia} · semana ${g.semana?.feitos ?? 0}/${g.semana?.previstos ?? 0}`;
+    const [split, ...rest] = (g.hoje?.treino || "").split(" - ");
+    put("bf-academia", g.erro ? statCard({ iconName: "academia", label: "Academia", value: "—", sub: "Treino.IA indisponível agora" })
+      : !g.plano ? statCard({ iconName: "academia", label: "Academia", value: "—", sub: "Nenhum plano de treino ativo" })
+      : !g.hoje || g.hoje.descanso ? statCard({ iconName: "academia", tag: "Hoje", label: "Academia", value: "Descanso", sub: streak })
+      : statCard({
+        iconName: "academia", tag: g.hoje.concluido ? "Hoje · ✓ feito" : "Hoje · pendente", label: "Academia",
+        value: esc(split),
+        sub: `${rest.length ? `${esc(rest.join(" - "))} · ` : ""}${g.hoje.exercicios} exercícios<br>~${g.hoje.minutos} min · sequência ${g.sequencia}`,
+      }));
   }
 
   // Clima: today's min–max like a forecast card
@@ -904,7 +913,7 @@ async function renderIntegrations() {
 
     ${ti.configured ? `<section class="panel flex flex-col">
       <div class="flex items-center justify-between">
-        <span class="panel-icon">${icon("treinos", 20)}</span>
+        <span class="panel-icon">${icon("academia", 20)}</span>
         ${pill("on", "Configurado")}
       </div>
       <h3 class="integ-title">Treino.IA</h3>
