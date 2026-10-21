@@ -13,6 +13,7 @@ const briefing = require("./briefing");
 const integrations = require("./integrations");
 const email = require("./email");
 const finplan = require("./finplan");
+const treinoia = require("./treinoia");
 const setup = require("./setup");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -86,6 +87,11 @@ ATIVIDADES FÍSICAS (Strava):
 - Para treinos, corridas, caminhadas, pedais, distância, ritmo, frequência cardíaca, use consultar_atividades (somente leitura).
 - Informe distância em km, tempo, ritmo (min/km) para corrida/caminhada e FC média quando houver. Seja motivador, sem exagero.
 - Sono, passos e FC em repouso não vêm do Strava; se perguntarem, explique isso brevemente.
+` : ""}${treinoia.isConfigured() ? `
+ACADEMIA (Treino.IA):
+- Para treino de hoje, exercícios, ficha, musculação, academia, sequência ou constância, use consultar_treinos_academia (somente leitura). Nunca invente exercícios nem cargas.
+- Treino de hoje: diga o nome, se já foi concluído e liste os exercícios com séries x repetições e carga quando houver. Se hoje for descanso, diga isso.
+- Corridas, caminhadas e pedais vêm do Strava (consultar_atividades); musculação vem do Treino.IA. Seja motivador, sem exagero.
 ` : ""}${finplan.isConfigured() ? `
 FINANÇAS (FinPlan):
 - Para saldo, fatura, cartão, limite, gastos ou receitas, use a ferramenta consultar_financas (somente leitura). Nunca invente valores.
@@ -352,7 +358,7 @@ function register(app) {
       const webKeywords =
         /clima|tempo|temperatura|notícia|resultado|placar|cotação|dólar|bitcoin|quem ganhou|quando (é|foi|será)|últim[oa]|atual|hoje|agora|preço/i;
       // Personal questions ("saldo atual", "fatura de hoje", "bom dia", "agenda de hoje") must reach our tools, not web search
-      const toolKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|corri|corrida|pedal|bike|caminhada|caminhei|treino|treinei|strava|atividades?|exerc[ií]cio|ritmo|pace|frequ[eê]ncia card|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes?|lembra|alarmes?|e-?mails?|caixa de entrada/i;
+      const toolKeywords = /saldo|fatura|cart[aã]o|limite|gastei|gastos?|despesas?|receitas?|finan[cç]|finplan|investimento|bom dia|boa tarde|boa noite|briefing|corri|corrida|pedal|bike|caminhada|caminhei|treino|treinei|academia|muscula[cç][aã]o|ficha|strava|atividades?|exerc[ií]cio|ritmo|pace|frequ[eê]ncia card|resumo d[oe] (meu )?dia|meu dia|agenda de hoje|lembretes?|lembra|alarmes?|e-?mails?|caixa de entrada/i;
       const needsWebSearch = webKeywords.test(message) && !toolKeywords.test(message);
 
       const tools = needsWebSearch

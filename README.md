@@ -14,7 +14,7 @@ Assistente pessoal com IA inspirado no JARVIS do Homem de Ferro, com voz, visão
 - **Lembretes** com notificação push (mesmo com o app fechado), edição e exclusão por chat, voz ou agenda
 - **Briefing do dia**: clima, agenda, finanças, treinos, e-mails, notícias e versículo, falado e em cards
 - **Memória persistente** que aprende fatos sobre o usuário automaticamente
-- **Integrações** somente leitura: FinPlan (finanças), Strava (treinos), e-mail via IMAP, Open-Meteo (clima)
+- **Integrações** somente leitura: FinPlan (finanças), Treino.IA (academia), Strava (treinos), e-mail via IMAP, Open-Meteo (clima)
 - **Dashboard HUD** com cards arrastáveis, monitor de sistema, reator animado e 5 temas
 - **Ferramentas do sistema** (comandos, apps, arquivos) com modo seguro para servidor
 - **Upload de documentos** (PDF, texto, código, CSV) e imagens
@@ -61,6 +61,7 @@ Não é preciso criar `.env` para rodar no seu computador. A configuração pode
 | `JARVIS_SECRET` | não | Chave que criptografa os segredos salvos pela tela (chave do Gemini, senhas de e-mail); sem ela é criado `.jarvis-secret` (faça backup junto com o banco) |
 | `JARVIS_CITY` | não | Cidade inicial do clima |
 | `FINPLAN_URL` / `FINPLAN_API_TOKEN` | não | Ativam a integração com o FinPlan |
+| `TREINOIA_URL` / `TREINOIA_API_TOKEN` | não | Ativam a integração com o Treino.IA |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | não | Ativam a integração com o Strava |
 | `MEMORY_LEARNING` | não | `off` desliga o aprendizado automático de memórias |
 | `TTS_PROVIDER` | não | `browser` desliga a voz do Gemini |

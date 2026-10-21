@@ -207,7 +207,7 @@ async function loadExtras() {
     if (!isCurrentPage("setup") || step !== 3) return;
     view.querySelector('[data-state="clima"]').innerHTML = s.clima.cidade ? pill("on", esc(s.clima.cidade)) : pill("off", "Sem cidade");
     view.querySelector('[data-state="email"]').innerHTML = s.email.contas ? pill("on", "Conectado") : pill("off", "Sem contas");
-    if (s.strava.connected || s.finplan.configured) view.querySelector('[data-state="apps"]').innerHTML = pill("on", "Conectadas");
+    if (s.strava.connected || s.finplan.configured || s.treinoia?.configured) view.querySelector('[data-state="apps"]').innerHTML = pill("on", "Conectadas");
   } catch {}
 }
 

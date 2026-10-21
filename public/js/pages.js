@@ -361,10 +361,21 @@ async function loadPreview(manual) {
     }));
   }
 
-  // Treinos
+  // Treinos: Strava activities, plus today's gym workout from Treino.IA when configured
   const t = data.atividades_7_dias;
+  const g = data.academia;
+  const gymLine = !g ? "" : g.erro ? `<br><span class="text-amber-400">academia: ${esc(g.erro)}</span>`
+    : !g.plano ? "<br>academia: nenhum plano ativo"
+    : !g.hoje ? `<br>academia: sem treino hoje · sequência ${g.sequencia}`
+    : g.hoje.descanso ? `<br>academia: hoje é descanso · sequência ${g.sequencia}`
+    : `<br>academia: ${esc(g.hoje.treino)} ${g.hoje.concluido ? '<span class="text-emerald-400">✓ feito</span>' : "(pendente)"} · sequência ${g.sequencia}`;
   if (t === undefined) put("bf-treinos", offCard("treinos", "Treinos"), true);
-  else if (!t) put("bf-treinos", statCard({ iconName: "treinos", label: "Treinos", value: "—", sub: `<button type="button" class="stat-link" data-page-open="integracoes">Conectar o Strava →</button>` }));
+  else if (!t && g && !g.erro && g.plano) put("bf-treinos", statCard({
+    iconName: "treinos", tag: "Semana", label: "Treinos",
+    value: `${g.semana.feitos}/${g.semana.previstos}`,
+    sub: `treinos de academia na semana${gymLine}`,
+  }));
+  else if (!t) put("bf-treinos", statCard({ iconName: "treinos", label: "Treinos", value: "—", sub: `<button type="button" class="stat-link" data-page-open="integracoes">Conectar o Strava →</button>${gymLine}` }));
   else {
     const kinds = Object.entries(t.por_tipo).map(([k, v]) => `${esc(k)} ${km(v.distancia_km)}`).join(" · ");
     // Always name the latest workout, so today's run is visible and not just part of the 7-day count
@@ -375,7 +386,7 @@ async function loadPreview(manual) {
     put("bf-treinos", statCard({
       iconName: "treinos", tag: "7 dias", label: "Treinos",
       value: `${t.total}`,
-      sub: `atividade${t.total === 1 ? "" : "s"}${kinds ? ` · ${kinds}` : ""}<br>${last}`,
+      sub: `atividade${t.total === 1 ? "" : "s"}${kinds ? ` · ${kinds}` : ""}<br>${last}${gymLine}`,
     }));
   }
 
@@ -857,6 +868,7 @@ async function renderIntegrations() {
   const st = s.strava;
   const stravaState = !st.configured ? pill("off", "Não configurado") : st.connected ? pill("on", "Conectado") : pill("warn", "Desconectado");
   const fp = s.finplan;
+  const ti = s.treinoia;
 
   view.querySelector("#int-grid").innerHTML = `
     <section class="panel flex flex-col">
@@ -887,6 +899,20 @@ async function renderIntegrations() {
       <p class="integ-result" data-result="finplan"></p>
       <div class="flex flex-wrap gap-2 mt-auto pt-4">
         <button type="button" class="page-btn" data-int="finplan-test">Testar conexão</button>
+      </div>
+    </section>` : ""}
+
+    ${ti.configured ? `<section class="panel flex flex-col">
+      <div class="flex items-center justify-between">
+        <span class="panel-icon">${icon("treinos", 20)}</span>
+        ${pill("on", "Configurado")}
+      </div>
+      <h3 class="integ-title">Treino.IA</h3>
+      <p class="integ-desc">Plano de academia, treino do dia com os exercícios, sequência e constância, lidos do seu app de treinos.</p>
+      <p class="integ-meta">Servidor: <span class="text-gray-200">${esc(ti.host)}</span></p>
+      <p class="integ-result" data-result="treinoia"></p>
+      <div class="flex flex-wrap gap-2 mt-auto pt-4">
+        <button type="button" class="page-btn" data-int="treinoia-test">Testar conexão</button>
       </div>
     </section>` : ""}
 
@@ -951,5 +977,11 @@ view.addEventListener("click", async (e) => {
     out("finplan", "Consultando…");
     const r = await (await fetch("/api/integrations/finplan/test", { method: "POST" })).json();
     out("finplan", r.ok ? `OK: ${r.cartoes} cart${r.cartoes === 1 ? "ão encontrado" : "ões encontrados"}.` : esc(r.error), r.ok);
+  } else if (action === "treinoia-test") {
+    out("treinoia", "Consultando…");
+    const r = await (await fetch("/api/integrations/treinoia/test", { method: "POST" })).json();
+    out("treinoia", r.ok
+      ? r.plano ? `OK: plano "${esc(r.plano)}"${r.hoje ? `, hoje: ${esc(r.hoje)}` : ""}.` : "OK, mas não há plano de treino ativo."
+      : esc(r.error), r.ok);
   }
 });

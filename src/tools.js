@@ -4,6 +4,7 @@ const fs = require("fs");
 const os = require("os");
 const { stmts } = require("./database");
 const finplan = require("./finplan");
+const treinoia = require("./treinoia");
 const { getBriefing } = require("./briefing");
 const strava = require("./strava");
 const email = require("./email");
@@ -164,7 +165,7 @@ functionDeclarations.push({
   name: "briefing_do_dia",
   description:
     "Resumo do dia do usuário em uma chamada: data/hora, clima da cidade dele (agora e previsão de hoje), " +
-    "lembretes atrasados / de hoje / próximos, saldo do mês e faturas vencendo em 7 dias (FinPlan) e o versículo do dia (NVI). " +
+    "lembretes atrasados / de hoje / próximos, saldo do mês e faturas vencendo em 7 dias (FinPlan), treino de academia de hoje e sequência (Treino.IA) e o versículo do dia (NVI). " +
     "Use quando ele cumprimentar com bom dia / boa tarde / boa noite, pedir o briefing, o resumo do dia ou 'como está meu dia'.",
   parameters: { type: "OBJECT", properties: {} },
 });
@@ -184,6 +185,19 @@ if (strava.isConfigured()) {
         tipo: { type: "STRING", description: "Filtrar por tipo: corrida, caminhada, pedal, musculação, natação..." },
       },
     },
+  });
+}
+
+// Read-only gym tool (Treino.IA: workout plan, today's exercises, streak), offered when configured
+if (treinoia.isConfigured()) {
+  functionDeclarations.push({
+    name: "consultar_treinos_academia",
+    description:
+      "Consulta (somente leitura) os treinos de academia do usuário no Treino.IA: plano ativo, treino de hoje com a lista de exercícios " +
+      "(séries, repetições, carga, descanso) e se já foi concluído, divisão da semana, sequência de treinos (streak), treinos da semana " +
+      "e do mês (quantidade, taxa de conclusão, tempo total) e o último treino feito. " +
+      "Use para 'qual meu treino hoje?', 'já treinei hoje?', exercícios, ficha, musculação, academia, sequência ou constância.",
+    parameters: { type: "OBJECT", properties: {} },
   });
 }
 
@@ -294,6 +308,8 @@ function executeToolCall(name, args) {
       }
       case "consultar_atividades":
         return strava.getActivities(args).catch((err) => ({ error: err.message }));
+      case "consultar_treinos_academia":
+        return treinoia.getTrainingSummary().catch((err) => ({ error: err.message }));
       case "consultar_emails":
         if (!email.hasAccounts()) return { error: "Nenhuma conta de e-mail cadastrada. Adicione em Briefing > Configurar > Contas de e-mail." };
         return email.getUnreadSummary().catch((err) => ({ error: err.message }));

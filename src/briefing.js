@@ -5,6 +5,7 @@ const { getWeather, findPlace } = require("./weather");
 const { verseOfTheDay } = require("./verses");
 const finplan = require("./finplan");
 const strava = require("./strava");
+const treinoia = require("./treinoia");
 const email = require("./email");
 const news = require("./news");
 
@@ -103,6 +104,20 @@ async function activitiesBlock() {
   return { total: a.total_atividades, por_tipo: a.totais_por_tipo, ultima: a.ultima_atividade_registrada };
 }
 
+// Gym plan (Treino.IA): today's workout and the streak, without the exercise list
+async function gymBlock() {
+  if (!treinoia.isConfigured()) return null;
+  const g = await treinoia.getTrainingSummary();
+  if (!g.workoutPlan) return { plano: null };
+  return {
+    plano: g.workoutPlan.name,
+    hoje: g.today && { treino: g.today.name, descanso: g.today.isRest, concluido: g.today.completed, exercicios: g.today.exercises.length, minutos: g.today.estimatedDurationInMinutes },
+    sequencia: g.workoutStreak,
+    semana: { feitos: g.week.completedWorkouts, previstos: g.week.plannedWorkouts },
+    ultimo: g.lastWorkout,
+  };
+}
+
 // Next 7 days (plus anything overdue) for the "Agenda consolidada" card
 function agendaWeek() {
   const now = localStamp();
@@ -130,10 +145,11 @@ async function getBriefing({ includeNews = true } = {}) {
   const cfg = getConfig();
   const on = cfg.secoes;
   const now = new Date();
-  const [weather, finances, activities, emails, headlines] = await Promise.allSettled([
+  const [weather, finances, activities, gym, emails, headlines] = await Promise.allSettled([
     on.clima ? getWeather(cfg.cidade) : skip(),
     on.financas ? financesBlock() : skip(),
     on.treinos ? activitiesBlock() : skip(),
+    on.treinos ? gymBlock() : skip(),
     on.emails ? emailsBlock() : skip(),
     on.noticias && includeNews ? newsBlock(cfg, { waitMs: BRIEFING_NEWS_WAIT_MS }) : skip(),
   ]);
@@ -147,6 +163,7 @@ async function getBriefing({ includeNews = true } = {}) {
     lembretes: on.lembretes ? remindersBlock() : undefined,
     financas: on.financas ? value(finances, { erro: "FinPlan indisponível" }) : undefined,
     atividades_7_dias: on.treinos ? value(activities, null) : undefined,
+    academia: on.treinos ? value(gym, treinoia.isConfigured() ? { erro: "Treino.IA indisponível" } : null) : undefined,
     emails: on.emails ? value(emails, null) : undefined,
     noticias: on.noticias && includeNews ? value(headlines, { erro: "Radar de notícias indisponível agora" }) : undefined,
     versiculo_do_dia: on.versiculo ? { ...verseOfTheDay(now), versao: "NVI" } : undefined,
