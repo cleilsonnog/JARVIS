@@ -3,26 +3,26 @@
 // a durable fact about the user worth keeping (or a correction / "esquece..."). Results go to
 // the same `memories` table the system prompt already injects, marked source = "auto".
 
-const { SchemaType } = require("@google/generative-ai");
+const { Type } = require("@google/genai");
 const { stmts } = require("./database");
-const { genAI, getProfile } = require("./setup");
+const { genAI, getProfile, GEMINI_MODEL } = require("./setup");
 
-const MODEL = process.env.MEMORY_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.MEMORY_MODEL || GEMINI_MODEL;
 const MIN_CHARS = 12;     // ignore "ok", "obrigado", etc.
 const MAX_CHANGES = 3;    // per exchange
 const MAX_VALUE = 300;
 
 const schema = {
-  type: SchemaType.OBJECT,
+  type: Type.OBJECT,
   properties: {
     changes: {
-      type: SchemaType.ARRAY,
+      type: Type.ARRAY,
       items: {
-        type: SchemaType.OBJECT,
+        type: Type.OBJECT,
         properties: {
-          action: { type: SchemaType.STRING, enum: ["save", "delete"] },
-          key: { type: SchemaType.STRING, description: "snake_case em português, curto e estável (ex.: esposa, igreja, time_de_futebol)" },
-          value: { type: SchemaType.STRING, description: "o fato, em uma frase curta (vazio para delete)" },
+          action: { type: Type.STRING, enum: ["save", "delete"] },
+          key: { type: Type.STRING, description: "snake_case em português, curto e estável (ex.: esposa, igreja, time_de_futebol)" },
+          value: { type: Type.STRING, description: "o fato, em uma frase curta (vazio para delete)" },
         },
         required: ["action", "key"],
       },
@@ -54,10 +54,6 @@ async function learnFromExchange(userMessage, assistantReply) {
   const knownBlock = known.length ? known.map((m) => `- ${m.key}: ${m.value}`).join("\n") : "(nenhuma ainda)";
 
   const nome = getProfile().nome || "Usuário";
-  const model = genAI().getGenerativeModel({
-    model: MODEL,
-    generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.1 },
-  });
   const prompt = `${instructions(nome)}
 
 MEMÓRIAS ATUAIS:
@@ -67,8 +63,12 @@ TROCA:
 ${nome}: ${text.slice(0, 2000)}
 JARVIS: ${String(assistantReply || "").slice(0, 1500)}`;
 
-  const result = await model.generateContent(prompt);
-  const { changes = [] } = JSON.parse(result.response.text());
+  const result = await genAI().models.generateContent({
+    model: MODEL,
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.1 },
+  });
+  const { changes = [] } = JSON.parse(result.text);
 
   const applied = [];
   for (const c of changes.slice(0, MAX_CHANGES)) {

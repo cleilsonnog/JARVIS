@@ -2,7 +2,7 @@
 // Configured on "Configurar briefing" (topics, how many, preferred sources). Each refresh is one
 // grounded Gemini call (~20s), so results are cached for CACHE_MS per configuration and served
 // stale-while-revalidate: an expired result is returned at once while a new search runs behind.
-const { genAI } = require("./setup");
+const { genAI, GEMINI_MODEL } = require("./setup");
 
 const CACHE_MS = 2 * 60 * 60 * 1000;
 const EMPTY_CACHE_MS = 20 * 60 * 1000; // an empty search is retried sooner
@@ -40,8 +40,10 @@ function parseItems(text, max) {
 }
 
 async function search(cfg) {
-  const model = genAI().getGenerativeModel({ model: "gemini-2.5-flash", tools: [{ googleSearch: {} }] });
-  const ask = async (opts) => parseItems((await model.generateContent(buildPrompt(cfg, opts))).response.text(), cfg.quantidade);
+  const ask = async (opts) => {
+    const res = await genAI().models.generateContent({ model: GEMINI_MODEL, contents: buildPrompt(cfg, opts), config: { tools: [{ googleSearch: {} }] } });
+    return parseItems(res.text || "", cfg.quantidade);
+  };
   const items = await ask();
   // The grounded search sometimes comes back empty; one more try without holding to the sources
   return items.length ? items : ask({ relaxed: true });

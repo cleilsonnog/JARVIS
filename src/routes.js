@@ -119,6 +119,31 @@ function getSystemPrompt() {
   return buildBasePrompt(setup.getProfile()) + `\nDATA E HORA ATUAL: ${dateStr} (${localIso})` + memoriesBlock;
 }
 
+// How long the model may take to start answering before we treat it as overloaded
+const FIRST_CHUNK_MS = 30000;
+
+// Gemini API errors the user can act on, told in plain words instead of the raw JSON
+function geminiErrorKind(err) {
+  const m = `${err?.status || ""} ${err?.message || ""}`;
+  if (/\b402\b|prepayment|credits are depleted/i.test(m)) return "credits";
+  if (/\b429\b|RESOURCE_EXHAUSTED|quota/i.test(m)) return "quota";
+  if (/\b503\b|UNAVAILABLE|high demand|overloaded|timeout: o Gemini/i.test(m)) return "overloaded";
+  if (/API key not valid|API_KEY_INVALID|PERMISSION_DENIED/i.test(m)) return "key";
+  return null;
+}
+
+function geminiErrorMessage(err) {
+  switch (geminiErrorKind(err)) {
+    case "credits": return "Os créditos da API do Gemini acabaram. Recarregue em ai.studio/projects (Billing) e tente de novo.";
+    case "quota": return /free_tier/i.test(err.message)
+      ? "Limite do plano gratuito do Gemini atingido. Ligue o faturamento do projeto da chave no AI Studio, ou espere um minuto."
+      : "Limite de uso do Gemini atingido. Espere um pouco e tente de novo.";
+    case "overloaded": return "O Gemini está sobrecarregado agora. Tente de novo em instantes.";
+    case "key": return "A chave do Gemini foi recusada. Confira a GEMINI_API_KEY ou a chave salva em Configuração.";
+    default: return "Erro ao falar com o Gemini: " + String(err?.message || err).slice(0, 200);
+  }
+}
+
 function register(app) {
   push.startReminderScheduler();
   tts.register(app);
@@ -365,13 +390,12 @@ function register(app) {
         ? [{ googleSearch: {} }]
         : [{ functionDeclarations }];
 
-      const model = setup.genAI().getGenerativeModel({
-        model: "gemini-2.5-flash",
-        systemInstruction: getSystemPrompt(),
-        tools,
-      });
-
-      let chat = model.startChat({ history });
+      // The SDK's chat keeps the model's thought signatures in the history, which Gemini 3
+      // requires for tool calls (the old @google/generative-ai dropped them)
+      let modelName = setup.GEMINI_MODEL;
+      const chatConfig = { systemInstruction: getSystemPrompt(), tools };
+      const newChat = () => setup.genAI().chats.create({ model: modelName, config: chatConfig, history });
+      let chat = newChat();
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -395,31 +419,65 @@ function register(app) {
 
       let fullResponse = "";
       let searchQueries = [];
-      let result = await chat.sendMessageStream(parts);
+      let outgoing = parts;
       let retried = false;
+      let toolsRan = false;
+      let overloadRetried = false;
 
       while (true) {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            fullResponse += text;
-            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        const calls = [];
+        let finishReason;
+        // An overloaded model sometimes hangs for minutes instead of answering 503: give up if
+        // the first chunk takes too long. Per-message config replaces the chat's, so resend it whole.
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(new Error("timeout: o Gemini não começou a responder")), FIRST_CHUNK_MS);
+        let gotChunk = false;
+        try {
+          const stream = await chat.sendMessageStream({ message: outgoing, config: { ...chatConfig, abortSignal: abort.signal } });
+          for await (const chunk of stream) {
+            if (!gotChunk) { gotChunk = true; clearTimeout(timer); }
+            const cand = chunk.candidates?.[0];
+            // Text parts only: skips thoughts and avoids the SDK warning about non-text parts
+            const text = (cand?.content?.parts || []).filter((p) => p.text && !p.thought).map((p) => p.text).join("");
+            if (text) {
+              fullResponse += text;
+              res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            }
+            if (chunk.functionCalls) calls.push(...chunk.functionCalls);
+            if (cand?.groundingMetadata?.webSearchQueries) searchQueries = cand.groundingMetadata.webSearchQueries;
+            if (cand?.finishReason) finishReason = cand.finishReason;
           }
+        } catch (err) {
+          const timedOut = abort.signal.aborted && !gotChunk;
+          if ((!timedOut && geminiErrorKind(err) !== "overloaded") || gotChunk) throw err;
+          // A 503 comes back fast: retry once as is (a failed send isn't added to the chat
+          // history). A hang already cost FIRST_CHUNK_MS, so it goes straight to the fallback.
+          if (!timedOut && !overloadRetried) {
+            overloadRetried = true;
+            console.warn(`${modelName} sobrecarregado (${err.message.slice(0, 60)}), tentando de novo`);
+            await new Promise((r) => setTimeout(r, 1500));
+            continue;
+          }
+          // Still overloaded: start over on the fallback model, unless a tool already ran
+          // (running create_reminder twice would duplicate the reminder)
+          if (toolsRan || modelName === setup.GEMINI_FALLBACK_MODEL) throw err;
+          console.warn(`${modelName} sobrecarregado, usando ${setup.GEMINI_FALLBACK_MODEL}`);
+          modelName = setup.GEMINI_FALLBACK_MODEL;
+          chat = newChat();
+          outgoing = parts;
+          continue;
+        } finally {
+          clearTimeout(timer);
         }
 
-        const response = await result.response;
-        const grounding = response.candidates?.[0]?.groundingMetadata;
-        if (grounding?.webSearchQueries) searchQueries = grounding.webSearchQueries;
-
-        const calls = response.functionCalls();
-        if (!calls || calls.length === 0) {
-          // Gemini 2.5 Flash sometimes ends the turn with nothing at all (finishReason STOP, no text,
-          // no tool call). Ask again once, from a fresh chat so the empty turn isn't in the history.
+        if (calls.length === 0) {
+          // Flash sometimes ends the turn with nothing at all (finishReason STOP, no text, no tool
+          // call). Ask again once, from a fresh chat so the empty turn isn't in the history.
           if (!fullResponse && !retried) {
             retried = true;
-            console.warn("Resposta vazia do Gemini, tentando de novo:", response.candidates?.[0]?.finishReason);
-            chat = model.startChat({ history });
-            result = await chat.sendMessageStream(parts);
+            console.warn("Resposta vazia do Gemini, tentando de novo:", finishReason);
+            chat = newChat();
+            outgoing = parts;
             continue;
           }
           break;
@@ -432,7 +490,8 @@ function register(app) {
           toolResults.push({ functionResponse: { name: call.name, response: toolResult } });
         }
 
-        result = await chat.sendMessageStream(toolResults);
+        toolsRan = true;
+        outgoing = toolResults;
       }
 
       stmts.addMessage.run(sessionId, "user", message);
@@ -454,10 +513,11 @@ function register(app) {
       res.end();
     } catch (err) {
       console.error("Erro na API:", err.message);
+      const friendly = geminiErrorMessage(err);
       if (!res.headersSent) {
-        res.status(500).json({ error: "Erro ao processar mensagem" });
+        res.status(500).json({ error: friendly });
       } else {
-        res.write(`data: ${JSON.stringify({ text: "\n\n⚠️ Erro: " + err.message })}\n\n`);
+        res.write(`data: ${JSON.stringify({ text: "\n\n⚠️ " + friendly })}\n\n`);
         res.write(`data: [DONE]\n\n`);
         res.end();
       }

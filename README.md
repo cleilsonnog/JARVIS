@@ -25,7 +25,7 @@ Assistente pessoal com IA inspirado no JARVIS do Homem de Ferro, com voz, visão
 |--------|-----------|
 | Backend | Node.js + Express |
 | Frontend | HTML + Tailwind CSS v3 + JS (ES Modules) |
-| LLM | Google Gemini 2.5 Flash (texto, visão, function calling) |
+| LLM | Google Gemini Flash (`gemini-3.6-flash`, configurável por `GEMINI_MODEL`; texto, visão, function calling) |
 | Voz | Gemini TTS + Web Speech API |
 | Banco | SQLite (better-sqlite3) |
 | Notificações | Web Push (VAPID) |

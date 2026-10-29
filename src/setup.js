@@ -3,7 +3,7 @@
 // come from .env (GEMINI_API_KEY, wins if set) or be pasted on the setup screen, where it's tested
 // and stored encrypted. The profile (name + free-form "about me" instructions) personalizes the
 // system prompt, so nothing about a specific user lives in the code.
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 const { stmts } = require("./database");
 const { encrypt, decrypt } = require("./secrets");
 
@@ -34,12 +34,18 @@ function keySource() {
   return getApiKey() ? "app" : null;
 }
 
+// Model for chat, briefing, news and memory. gemini-2.5-flash is closed to keys created after
+// mid-2026, so the default is a current Flash; GEMINI_MODEL overrides it. The chat falls back to
+// GEMINI_FALLBACK_MODEL when the main one answers 503 (the newest Flash models get overloaded).
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash";
+
 // One client per key, so a key saved on the setup screen takes effect without a restart
 let client = { key: null, ai: null };
 function genAI() {
   const key = getApiKey();
   if (!key) throw new Error("Chave do Gemini não configurada. Abra Configuração no menu lateral.");
-  if (client.key !== key) client = { key, ai: new GoogleGenerativeAI(key) };
+  if (client.key !== key) client = { key, ai: new GoogleGenAI({ apiKey: key }) };
   return client.ai;
 }
 
@@ -107,4 +113,4 @@ function register(app) {
   });
 }
 
-module.exports = { register, genAI, getApiKey, getProfile };
+module.exports = { register, genAI, getApiKey, getProfile, GEMINI_MODEL, GEMINI_FALLBACK_MODEL };

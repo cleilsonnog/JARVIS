@@ -10,7 +10,7 @@
     "dev": "npm run build:css && (tailwindcss -i styles/tailwind.css -o public/tailwind.css --watch=always & node --watch server.js)"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
+    "@google/genai": "^2.32.0",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
